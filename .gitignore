@@ -1,0 +1,7 @@
+*.*
+!lib/
+!deno.jsonc
+!deno.lock
+!.gitignore
+!*.ts
+!*.md
