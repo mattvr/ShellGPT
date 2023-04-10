@@ -1,6 +1,8 @@
+#### [[ <img src="https://user-images.githubusercontent.com/4052466/230916740-3ca70970-67fd-45f2-9a22-c0e51e4292fc.svg" /> Introducing ShellGPT ]](https://twitter.com/matt_fvr/status/1645419221634125828)
+
 # ShellGPT
 
-ShellGPT is a command-line tool that allows you to interact with GPT-4 directly from your terminal.
+A command-line tool that allows you to interact with GPT-4 directly from your terminal.
 
 https://user-images.githubusercontent.com/4052466/230909567-3569f34c-b145-4cd8-8e55-5445bba00ba8.mp4
 
