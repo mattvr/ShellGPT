@@ -1,6 +1,6 @@
-#### [[ <img src="https://user-images.githubusercontent.com/4052466/230916740-3ca70970-67fd-45f2-9a22-c0e51e4292fc.svg" /> Introducing ShellGPT ]](https://twitter.com/matt_fvr/status/1645419221634125828)
-
 # ShellGPT
+
+#### [[ <img src="https://user-images.githubusercontent.com/4052466/230916740-3ca70970-67fd-45f2-9a22-c0e51e4292fc.svg" /> Introducing ShellGPT ]](https://twitter.com/matt_fvr/status/1645419221634125828)
 
 A command-line tool that allows you to interact with GPT-4 directly from your terminal.
 
@@ -38,7 +38,7 @@ gpt "Output a CSV of 10 notable cities in Japan with their name in English & Jap
 
 ## Installation
 
-1. Install the [Deno runtime](https://deno.land/manual/getting_started/installation)
+1. Install the [Deno runtime](https://deno.land/manual/getting_started/installation).
 
 2. Run the following command to install ShellGPT:
 
@@ -83,8 +83,8 @@ To configure the specific ChatGPT model and system prompt, you can type `gpt --c
 
 Shell-GPT has some useful and unique features:
 
-- Execute shell commands with a confirmation step (just pass `-x`). Ideal for determining which command to run.
-- Supports input/output piping for simple file creation and transformation (see [Basic Usage](#Basic_Usage)).
+- Execute shell commands with a confirmation step (just pass `-x`).
+- Supports input/output piping for simple file creation and transformation (see [Basic Usage](#basic-usage)).
 - Utility commands for convenient chat history viewing and editing.
 - Smooth, streaming output, resembling human typing rather than delayed or choppy responses.
 - Built in Deno for better performance, granular permissions, and easier script modification.
