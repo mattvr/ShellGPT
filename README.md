@@ -2,6 +2,8 @@
 
 ShellGPT is a command-line tool that allows you to interact with GPT-4 directly from your terminal.
 
+https://user-images.githubusercontent.com/4052466/230909567-3569f34c-b145-4cd8-8e55-5445bba00ba8.mp4
+
 ## Basic Usage
 
 To use ShellGPT, simply run the command with your input message:
