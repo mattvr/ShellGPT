@@ -154,14 +154,18 @@ const meta_write = async (req: ChatCompletionRequest, isNew: boolean) => {
 }
 
 export const meta_genDescriptiveName = async (req: ChatCompletionRequest) => {
+  // This function generates a descriptive name from a chat for your history
+  // e.g. if you're talking about which car to buy, it will generate a name like "car-buying"
+
   const newReq = {
     ...req, messages: [
-      ...req.messages,
+      ...req.messages.filter(m => m.role !== 'system'),
       {
         role: 'system' as const,
-        content: `INSTRUCTION: Please respond with ONLY a short, descriptive, hyphenated name that describes the above conversation.`
+        content: `[IMPORTANT INSTRUCTION] Response ONLY with a short, descriptive, hyphenated name that describes the above conversation, in the format: my-chat-name`
       }
-    ]
+    ],
+    model: 'gpt-3.5-turbo' // use turbo as its cheaper/faster
   }
   const chatName = await getChatResponse_withRetries(newReq)
   return chatName

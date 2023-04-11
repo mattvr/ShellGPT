@@ -51,6 +51,8 @@ const args = parse(Deno.args, {
     // Temperature (creativity)
     'temperature', 'temp', 't',
 
+    'max_tokens', 'max',
+
     // WPM (words per minute, speed of typing output)
     'wpm',
 
@@ -80,6 +82,7 @@ const cont = slice || pop || retry || rewrite || print || dump || (Boolean(args.
 const wpm = args.wpm ? Number(args.wpm) : DEFAULT_WPM
 const history = args.h || args.history
 const system = args.sys || args.system
+const maxTokens = args.max || args.max_tokens
 const readStdin = args._.at(-1) === '-' || args._.at(0) === '-'
 // --- END Parse Args ---
 
@@ -120,6 +123,7 @@ Options:
   --sys, --system     Set a system prompt/context
   -t, --temp          Set the creativity temperature
   --wpm WPM           Set the words per minute
+  --max MAX_TOKENS    Set the maximum number of tokens
   -m, --model MODEL   Manually use a different OpenAI model
 
 Examples:
@@ -242,7 +246,8 @@ if (dump) {
   Deno.exit()
 }
 
-if (system || config?.systemPrompt) {
+if (system || (config?.systemPrompt && !cont)) {
+  // Add system prompt if set for this message, or is a new conversation
   req.messages.push({
     role: 'system',
     content: system ?? config!.systemPrompt!
@@ -257,6 +262,10 @@ if (!message.content && !retry && !pop && !history) {
 
 if (temp) {
   req.temperature = Number(temp)
+}
+
+if (maxTokens) {
+  req.max_tokens = Number(maxTokens)
 }
 
 if (model) {
