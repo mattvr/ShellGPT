@@ -44,7 +44,7 @@ gpt "Output a CSV of 10 notable cities in Japan with their name in English & Jap
 2. Run the following command to install ShellGPT:
 
 ```sh
-deno install -A --name=gpt https://deno.land/x/shellgpt/mod.ts
+deno install -A --name=gpt https://deno.land/x/shellgpt@0.1.4/mod.ts
 ```
 
 ### Configuration
