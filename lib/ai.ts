@@ -74,6 +74,15 @@ interface ChatCompletionStreamResponse {
   choices: StreamChoice[];
 }
 
+interface ChatCompetionStreamError {
+  "error": {
+    "message": string | null,
+    "type": string | null
+    "param": string | null
+    "code": string | null
+  }
+}
+
 export const getChatResponse_withRetries = async (req: ChatCompletionRequest, retries = 3): Promise<string | null> => {
   let response = null
   for (let i = 0; i < retries; i++) {
@@ -172,9 +181,10 @@ export const getChatResponse_stream = async (req: ChatCompletionRequest): Promis
             return { done: true, value: { done: true, value: fullMessage, delta: null } }
           }
 
+          let parsed = null
           // remove the "data: " from the beginning of the message
           try {
-            const parsed = JSON.parse(data) as ChatCompletionStreamResponse
+            parsed = JSON.parse(data) as ChatCompletionStreamResponse
 
             if (parsed.choices[0].finish_reason) {
               // DONE by incoming final message
@@ -185,7 +195,15 @@ export const getChatResponse_stream = async (req: ChatCompletionRequest): Promis
           }
           catch (e: unknown) {
             // throw with added context
-            (e as Error).message = `Failed to parse message:\n"${data}"\n\n${e}`
+            const error = (parsed as unknown as ChatCompetionStreamError | null)?.error
+            if (error?.code === 'model_not_found') {
+              console.error(`Failed to find selected OpenAI model ${req.model}. Select a valid model from: https://platform.openai.com/docs/models/model-endpoint-compatibility by using \`gpt --config\`
+              
+              You may need to apply for access to GPT-4 via https://openai.com/waitlist/gpt-4-api. Use "gpt-3.5-turbo" in the meantime.`)
+            }
+            else {
+              console.error(data)
+            }
             throw e
           }
         }

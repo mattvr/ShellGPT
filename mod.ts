@@ -62,6 +62,7 @@ const args = parse(Deno.args, {
 })
 
 // --- Parse Args ---
+const DEFAULT_MODEL = 'gpt-3.5-turbo'
 const DEFAULT_WPM = 800
 const AVG_CHARS_PER_WORD = 4.8
 
@@ -96,7 +97,7 @@ const message: Message = {
 }
 
 const stock: ChatCompletionRequest = {
-  model: model ?? config?.model ?? 'gpt-4',
+  model: model ?? config?.model ?? DEFAULT_MODEL,
   messages: []
 }
 
@@ -168,7 +169,7 @@ if (updateConfig || configWasEmpty) {
       lastUpdated: new Date().toISOString(),
     })
   }
-  const currentModel = config?.model || 'gpt-4'
+  const currentModel = config?.model || DEFAULT_MODEL
 
   console.log('Which OpenAI ChatGPT model would you like to use?')
   console.log()
@@ -212,7 +213,7 @@ if (updateConfig || configWasEmpty) {
     } else {
       // Otherwise, continue with the rest of the script
       config = newConfig
-      req.model = model ?? config.model ?? 'gpt-4'
+      req.model = model ?? config.model ?? DEFAULT_MODEL
     }
   }
   catch (e) {

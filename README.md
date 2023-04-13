@@ -58,7 +58,9 @@ using a key obtained from https://platform.openai.com/account/api-keys:
 export OPENAI_API_KEY=...
 ```
 
-To configure the specific ChatGPT model and system prompt, you can type
+To use the GPT-4 model (recommended as it produces much better results), you'll need to apply for access via [this link](https://openai.com/waitlist/gpt-4-api). Note that it is more expensive, however.
+
+To configure the specific ChatGPT model and system prompt used, you can type
 `gpt --config`
 
 ## Commands and Arguments
