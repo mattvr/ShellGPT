@@ -86,7 +86,8 @@ const maxTokens = args.max || args.max_tokens
 const readStdin = args._.at(-1) === '-' || args._.at(0) === '-'
 // --- END Parse Args ---
 
-const config = await loadConfig()
+let config = await loadConfig()
+const configWasEmpty = Object.keys(config ?? {}).length === 0
 const messageContent = args._.join(' ')
 
 const message: Message = {
@@ -158,8 +159,15 @@ if (slice) {
   Deno.exit()
 }
 
-if (updateConfig) {
-  const newConfig: Config = { ...(config ?? {}) }
+if (updateConfig || configWasEmpty) {
+  if (configWasEmpty) {
+    console.log('(No config found. Running initial setup...)\n')
+  }
+  const newConfig: Config = {
+    ...(config ?? {
+      lastUpdated: new Date().toISOString(),
+    })
+  }
   const currentModel = config?.model || 'gpt-4'
 
   console.log('Which OpenAI ChatGPT model would you like to use?')
@@ -197,7 +205,15 @@ if (updateConfig) {
   try {
     await saveConfig(newConfig)
     console.log(`Updated config file at: ${await getOrCreateConfigPath()}`)
-    Deno.exit()
+
+    if (updateConfig) {
+      // Exit only if the user manually requested config update
+      Deno.exit()
+    } else {
+      // Otherwise, continue with the rest of the script
+      config = newConfig
+      req.model = model ?? config.model ?? 'gpt-4'
+    }
   }
   catch (e) {
     console.error(`Failed to update config file at: ${await getOrCreateConfigPath()}`)

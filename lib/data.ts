@@ -1,6 +1,7 @@
 import { ChatCompletionRequest, getChatResponse_withRetries } from "./ai.ts"
 
 export type Config = {
+  lastUpdated: string,
   latestName?: string,
   hasDescriptiveName?: boolean,
   model?: string,
@@ -138,11 +139,11 @@ const meta_write = async (req: ChatCompletionRequest, isNew: boolean) => {
     }
 
     await Promise.all([
-      Deno.writeTextFile(await getOrCreateConfigPath(), JSON.stringify({
+      saveConfig({
         ...config,
         latestName,
         hasDescriptiveName
-      })),
+      }),
       Deno.writeTextFile(finalFullPath, JSON.stringify(chatJson))
     ])
 
@@ -220,7 +221,10 @@ export const loadConfig = async (): Promise<Config | null> => {
   }
 }
 
-export const saveConfig = async (config: Config) => {
+export const saveConfig = async (config: Partial<Config>) => {
   const configPath = await getOrCreateConfigPath()
-  await Deno.writeTextFile(configPath, JSON.stringify(config))
+  await Deno.writeTextFile(configPath, JSON.stringify({
+    lastUpdated: new Date().toISOString(),
+    ...config,
+  }))
 }
