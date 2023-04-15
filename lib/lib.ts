@@ -1,24 +1,41 @@
-export async function executeShellCommands(command: string) {
-  const commands = command.split('\n')
+/**
+ * TODO
+ */
+export async function askQuestion(question: string): Promise<string> {
+  console.log(question);
 
-  for (const command of commands) {
-    const preamble = Deno.build.os === 'windows' ? ['cmd', '/c'] : ['sh', '-c']
-
-    // Start a shell process and wait for it to finish
-    const process = Deno.run({
-      cmd: [...preamble, command],
-      stdout: "inherit",
-      stderr: "inherit",
+  if (Deno.build.os === "windows") {
+    const command = Deno.run({
+      cmd: ["choice", "/C", "yn"],
+      stdout: "piped",
+      stderr: "piped",
     });
 
-    const status = await process.status(); // Wait for the process to finish
+    const output = await command.output();
+    const answer = new TextDecoder().decode(output).trim();
 
-    if (!status.success) {
-      console.error(`Shell command failed: ${command}`);
-      console.error(`Exit code: ${status.code}`);
+    if (answer === "Y") {
+      return "yes";
+    } else {
+      return "no";
     }
+  } else {
+    const command = Deno.run({
+      cmd: ["read"],
+      stdin: "piped",
+      stdout: "piped",
+      stderr: "piped",
+    });
 
-    process.close();
+    // const input = new TextEncoder().encode("yes\nno\n");
+    // await command.stdin.write(input);
+    // command.stdin.close();
+
+    const result = await command.status();
+    // const output = await command.stdout.read(input);
+    // const answer = new TextDecoder().decode(output).trim();
+
+    return 'asdf';
   }
 }
 

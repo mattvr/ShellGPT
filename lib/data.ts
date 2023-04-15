@@ -1,11 +1,29 @@
-import { ChatCompletionRequest, getChatResponse_withRetries } from "./ai.ts"
+import { ChatCompletionRequest } from "./ai.ts"
+import { genDescriptiveNameForChat } from "./prompts.ts";
+
+export const VERSION = '0.2.5'
+export const AUTO_UPDATE_PROBABILITY = 0.1
 
 export type Config = {
   lastUpdated: string,
+  version: string | 'unknown',
+  command?: string,
+  autoUpdate: 'never' | 'prompt' | 'always',
   latestName?: string,
   hasDescriptiveName?: boolean,
   model?: string,
   systemPrompt?: string,
+}
+
+export const DEFAULT_CONFIG: Config = {
+  lastUpdated: new Date().toISOString(),
+  version: VERSION,
+  autoUpdate: 'prompt',
+  command: undefined,
+  latestName: undefined,
+  hasDescriptiveName: undefined,
+  model: undefined,
+  systemPrompt: undefined,
 }
 
 // set to $HOME
@@ -52,7 +70,12 @@ const getOrCreateHistoryPath = async (): Promise<string> => {
   return await getOrCreatePath(path);
 }
 
-export const getOrCreateConfigPath = async (): Promise<string> => {
+const getOrCreateHistorySnippetsFile = async (): Promise<string> => {
+  const path = `${getBasePath()}/history-snippets.json`;
+  return await getOrCreatePath(path, true);
+}
+
+export const getOrCreateConfigFile = async (): Promise<string> => {
   const path = `${getBasePath()}/config.json`
   return await getOrCreatePath(path, true);
 }
@@ -104,16 +127,18 @@ const meta_getChat = async (chatName: string): Promise<{ name: string, request: 
   }
 }
 
-const meta_write = async (req: ChatCompletionRequest, isNew: boolean) => {
+const meta_write = async (req: ChatCompletionRequest, isNewOrName: boolean | string) => {
   try {
     const config = await loadConfig()
-    let latestName = isNew ? getDatetimeString() : (config?.latestName ?? getDatetimeString())
+    let latestName = isNewOrName === true ? getDatetimeString() : typeof isNewOrName === 'string' ? isNewOrName : (config?.latestName ?? getDatetimeString())
+
     const latestFullPath = `${await getOrCreateHistoryPath()}/${latestName}.json`
     let finalFullPath = latestFullPath
 
-    let hasDescriptiveName = !isNew && config?.hasDescriptiveName
-    if (!hasDescriptiveName && req.messages.length >= 6) {
-      const descName = await meta_genDescriptiveName(req)
+    let hasDescriptiveName = !isNewOrName && config?.hasDescriptiveName
+    if (!hasDescriptiveName && req.messages.length >= 5) {
+      // Write out a descriptive name for continued chats of a certain length
+      const descName = await genDescriptiveNameForChat(req)
       if (descName) {
         latestName = descName
         finalFullPath = `${await getOrCreateHistoryPath()}/${latestName}.json`
@@ -154,26 +179,8 @@ const meta_write = async (req: ChatCompletionRequest, isNew: boolean) => {
   }
 }
 
-export const meta_genDescriptiveName = async (req: ChatCompletionRequest) => {
-  // This function generates a descriptive name from a chat for your history
-  // e.g. if you're talking about which car to buy, it will generate a name like "car-buying"
-
-  const newReq = {
-    ...req, messages: [
-      ...req.messages.filter(m => m.role !== 'system'),
-      {
-        role: 'system' as const,
-        content: `[IMPORTANT INSTRUCTION] Response ONLY with a short, descriptive, hyphenated name that describes the above conversation, in the format: my-chat-name`
-      }
-    ],
-    model: 'gpt-3.5-turbo' // use turbo as its cheaper/faster
-  }
-  const chatName = await getChatResponse_withRetries(newReq)
-  return chatName
-}
-
-export const writeChat = async (req: ChatCompletionRequest, isNew = true) => {
-  await meta_write(req, isNew)
+export const writeChat = async (req: ChatCompletionRequest, isNewOrName: boolean | string = true) => {
+  await meta_write(req, isNewOrName)
 }
 
 export const getChat = async (name: string | undefined): Promise<ChatCompletionRequest | null> => {
@@ -183,15 +190,34 @@ export const getChat = async (name: string | undefined): Promise<ChatCompletionR
   return (await meta_getLatest())?.request || null
 }
 
+/**
+ * Get the history of chats
+ * @example [{ name: '2021-01-01_12-00-00', time: Date }, { name: '2021-01-01_12-00-00', time: Date }]
+ */
 export const getHistory = async (): Promise<{
   name: string,
+  snippet?: string,
   time: Date
 }[]> => {
   const path = await getOrCreateHistoryPath()
   const files = await Deno.readDir(path)
 
+  const historySnippetsPath = await getOrCreateHistorySnippetsFile()
+  let historySnippets: { [key: string]: string } = {}
+  try {
+    const historySnippetsData = await Deno.readTextFile(historySnippetsPath)
+    historySnippets = JSON.parse(historySnippetsData)
+  }
+  catch {
+    // ignore
+  }
+
   // convert AsyncIterable to array of strings
-  const fileInfos = []
+  const fileInfos: {
+    name: string,
+    snippet?: string,
+    time: Date
+  }[] = []
   for await (const file of files) {
     if (!file.name.endsWith('.json')) continue
     if (file.name === 'meta.json') continue
@@ -205,11 +231,43 @@ export const getHistory = async (): Promise<{
 
   fileInfos.sort((a, b) => b.time.getTime() - a.time.getTime())
 
+  // add historySnippets
+  let generatedSnippets = false
+  const SNIPPET_MAX_LENGTH = 50
+  for (let i = 0; i < fileInfos.length; i++) {
+    const fileInfo = fileInfos[i]
+
+    if (historySnippets[fileInfo.name]) {
+      fileInfo.snippet = historySnippets[fileInfo.name]
+      continue
+    }
+
+    // Generate snippets for the first 10 chats
+    const chat = await meta_getChat(fileInfo.name)
+    if (chat) {
+      const fullText = chat.request.messages
+        .filter(m => m.role !== 'system')
+        .map(m => m.content)
+        .slice(0, 5)
+        .join(' ')
+        .replaceAll('\n', ' ')
+
+      const snippet = fullText.length > SNIPPET_MAX_LENGTH ? `${fullText.slice(0, SNIPPET_MAX_LENGTH)}...` : fullText
+      fileInfo.snippet = snippet
+      historySnippets[fileInfo.name] = snippet
+      generatedSnippets = true
+    }
+  }
+
+  if (generatedSnippets) {
+    await Deno.writeTextFile(historySnippetsPath, JSON.stringify(historySnippets))
+  }
+
   return fileInfos
 }
 
 export const loadConfig = async (): Promise<Config | null> => {
-  const configPath = await getOrCreateConfigPath()
+  const configPath = await getOrCreateConfigFile()
   try {
     const configData = await Deno.readTextFile(configPath)
     const configJson = JSON.parse(configData)
@@ -222,9 +280,12 @@ export const loadConfig = async (): Promise<Config | null> => {
 }
 
 export const saveConfig = async (config: Partial<Config>) => {
-  const configPath = await getOrCreateConfigPath()
+  const configPath = await getOrCreateConfigFile()
+
   await Deno.writeTextFile(configPath, JSON.stringify({
     lastUpdated: new Date().toISOString(),
+    version: VERSION,
+    autoUpdate: 'prompt',
     ...config,
   }))
 }

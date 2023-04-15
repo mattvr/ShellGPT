@@ -44,10 +44,8 @@ gpt "Output a CSV of 10 notable cities in Japan with their name in English & Jap
 2. Run the following command to install ShellGPT:
 
 ```sh
-deno install -frA --name=gpt https://deno.land/x/shellgpt/mod.ts
+deno run -A https://deno.land/x/shellgpt/install.ts
 ```
-
-You can change the name of the script with the `--name` flag above. To uninstall, just type `deno uninstall gpt`.
 
 ### Configuration
 

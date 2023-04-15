@@ -1,7 +1,10 @@
-import { Config, getChat, getHistory, getOrCreateConfigPath, loadConfig, saveConfig, writeChat } from "./lib/data.ts";
+import { AUTO_UPDATE_PROBABILITY, Config, DEFAULT_CONFIG, VERSION, getChat, getHistory, getOrCreateConfigFile, loadConfig, saveConfig, writeChat } from "./lib/data.ts";
 import { ChatCompletionRequest, Message, getChatResponse_stream } from "./lib/ai.ts";
-import { executeShellCommands, pullCharacter } from "./lib/lib.ts";
+import { askQuestion, pullCharacter } from "./lib/lib.ts";
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
+import { setExecutableCmdParamsForChat } from "./lib/prompts.ts";
+import { install, isLatestVersion } from "./lib/update.ts";
+import { exec as shExec } from "./lib/shell.ts";
 
 const args = parse(Deno.args, {
   boolean: [
@@ -40,6 +43,9 @@ const args = parse(Deno.args, {
 
     // Fast (use GPT-3.5-turbo)
     'fast', 'f',
+
+    // Update (update ShellGPT)
+    'update', 'u',
   ],
   string: [
     // Name (select a conversation from history to use)
@@ -62,7 +68,7 @@ const args = parse(Deno.args, {
 })
 
 // --- Parse Args ---
-const DEFAULT_MODEL = 'gpt-3.5-turbo'
+const DEFAULT_MODEL = 'gpt-4'
 const DEFAULT_WPM = 800
 const AVG_CHARS_PER_WORD = 4.8
 
@@ -70,6 +76,7 @@ const help = args.help
 const name = args.name || args.n
 const fast = args.f || args.fast
 const updateConfig = args.config
+const update = args.update || args.u
 const model = fast ? 'gpt-3.5-turbo' as const : (args.model ?? args.m)
 const temp = args.t || args.temp || args.temperature
 const exec = args.x || args.exec
@@ -84,11 +91,14 @@ const wpm = args.wpm ? Number(args.wpm) : DEFAULT_WPM
 const history = args.h || args.history
 const system = args.sys || args.system
 const maxTokens = args.max || args.max_tokens
-const readStdin = args._.at(-1) === '-' || args._.at(0) === '-'
+const readStdin = args._.at(0) === '-' || args._.at(-1) === '-'
 // --- END Parse Args ---
 
 let config = await loadConfig()
+const gptCommand = config?.command ?? DEFAULT_CONFIG.command
 const configWasEmpty = Object.keys(config ?? {}).length === 0
+const shouldAutoUpdate = Math.random() < AUTO_UPDATE_PROBABILITY
+
 const messageContent = args._.join(' ')
 
 const message: Message = {
@@ -104,11 +114,12 @@ const stock: ChatCompletionRequest = {
 const req: ChatCompletionRequest = (cont || name) ? ((await getChat(name)) ?? stock) : stock
 
 const helpMessage = `
-Usage: gpt [OPTIONS] [MESSAGE]
+Usage: ${gptCommand} [OPTIONS] [MESSAGE]
 
 Options:
   --help              Show this help message
   --config            Runs configuration
+  --update            Updates ShellGPT
   -                   Read message from stdin
   -c, --continue      Continue the last conversation
   -x, --exec          Run the generated response as a shell command
@@ -129,10 +140,10 @@ Options:
   -m, --model MODEL   Manually use a different OpenAI model
 
 Examples:
-  gpt "What is the capital of France?"
-  gpt -c "Tell me more about Paris."
-  gpt -x "Create a new file called 'test.txt' and write 'Hello World!' to it."
-  cat test.txt | gpt - "Invert the capitalization of this text."
+  ${gptCommand} "What is the capital of France?"
+  ${gptCommand} -c "Tell me more about Paris."
+  ${gptCommand} -x "Create a new file called 'test.txt' and write 'Hello World!' to it."
+  cat test.txt | ${gptCommand} - "Invert the capitalization of this text."
 `
 
 // --- HANDLE ARGS ---
@@ -159,19 +170,47 @@ if (slice) {
   }
   Deno.exit()
 }
-
+if (update || shouldAutoUpdate) {
+  const isLatest = await isLatestVersion()
+  if (shouldAutoUpdate && isLatest) {
+    // do nothing in this case
+  }
+  else {
+    const newConfig = config ?? DEFAULT_CONFIG
+    const updateInfo = await install(newConfig, true)
+    saveConfig(newConfig)
+    if (updateInfo.result === 'updated') {
+      console.log('\n%c> Successfully updated!', 'font-weight: bold;')
+      Deno.exit()
+    }
+    else if (updateInfo.result === 'error') {
+      console.log('\n%c> Encountered error while updating.', 'font-weight: bold;')
+      Deno.exit()
+    }
+    else {
+      console.log('\n%c> No updates found.', 'font-weight: bold;')
+      Deno.exit()
+    }
+  }
+}
 if (updateConfig || configWasEmpty) {
   if (configWasEmpty) {
     console.log('(No config found. Running initial setup...)\n')
   }
   const newConfig: Config = {
-    ...(config ?? {
-      lastUpdated: new Date().toISOString(),
-    })
+    ...(config ?? DEFAULT_CONFIG)
   }
+
+  const updateInfo = await install(newConfig, true)
+
+  if (updateInfo.result === 'updated') {
+    console.log('\n%c> Successfully updated! Please re-run `gpt --config`', 'font-weight: bold;')
+    Deno.exit()
+  }
+
   const currentModel = config?.model || DEFAULT_MODEL
 
-  console.log('Which OpenAI ChatGPT model would you like to use?')
+  console.log('\n%c> Which OpenAI ChatGPT model would you like to use?', 'font-weight: bold;')
   console.log()
   const model = window.prompt(`You can enter "gpt-4" or "gpt-3.5-turbo". (Leave empty for ${currentModel}):`)
 
@@ -179,8 +218,7 @@ if (updateConfig || configWasEmpty) {
     newConfig.model = model ?? currentModel
   }
 
-  console.log('---\n')
-  console.log('Would you like to set a custom system prompt to attach to each session?')
+  console.log('\n%c> Would you like to set a custom system prompt to attach to each session?', 'font-weight: bold;')
   if (config?.systemPrompt) {
     console.log(`Current system prompt: ${config.systemPrompt}`)
     console.log()
@@ -205,7 +243,7 @@ if (updateConfig || configWasEmpty) {
 
   try {
     await saveConfig(newConfig)
-    console.log(`Updated config file at: ${await getOrCreateConfigPath()}`)
+    console.log(`%cUpdated config file: %c${await getOrCreateConfigFile()}`, 'color: green; font-weight: bold;', 'color: green;')
 
     if (updateConfig) {
       // Exit only if the user manually requested config update
@@ -217,7 +255,7 @@ if (updateConfig || configWasEmpty) {
     }
   }
   catch (e) {
-    console.error(`Failed to update config file at: ${await getOrCreateConfigPath()}`)
+    console.error(`Failed to update config file at: ${await getOrCreateConfigFile()}`)
     console.error(e)
     Deno.exit(1)
   }
@@ -304,17 +342,19 @@ if (!retry && !empty) {
 }
 
 if (exec) {
-  req.messages = req.messages.filter(m => m.role !== 'system') // other system messages tend to conflict
-  req.messages.push({
-    role: 'system',
-    content: `IMPORTANT INSTRUCTIONS: Reply ONLY with an executable shell command(s) for the given prompt and no other text. (OS: ${Deno.build.os}})`
-  })
+  setExecutableCmdParamsForChat(req)
 }
 
 if (history) {
   const files = await getHistory()
   for (const file of files) {
-    console.log(file.name)
+    const hasSnippet = file.snippet && file.snippet.length > 0
+    if (hasSnippet) {
+      console.log(`%c${file.name}\t\t%c${file.snippet}`, 'color: blue', 'color: gray')
+    }
+    else {
+      console.log(`%c${file.name}`, 'color: blue')
+    }
   }
   Deno.exit()
 }
@@ -347,17 +387,19 @@ const flush = async () => {
     role: 'assistant'
   })
 
-  await writeChat(req, !cont)
+  await writeChat(req, cont ? false : (name || true))
 
-  if (exec) {
-    const promptValue = window.prompt(`\nAre you SURE you wish to run the above command? (y/N):`)
+  if (exec && !readStdin) {
+    const promptValue = prompt(`\nAre you SURE you wish to run the above command? (y/N):`)
     if (['y', 'yes'].includes(promptValue?.toLowerCase() ?? '')) {
       // do it
-      await executeShellCommands(responseStr)
+      await shExec(responseStr)
     }
     else {
       console.log('(will not exec command)')
     }
+  } else if (exec && readStdin) {
+    console.log('(exec not currently supported when reading from stdin)')
   }
 }
 
