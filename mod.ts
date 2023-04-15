@@ -97,7 +97,7 @@ const readStdin = args._.at(0) === '-' || args._.at(-1) === '-'
 let config = await loadConfig()
 const gptCommand = config?.command ?? DEFAULT_CONFIG.command
 const configWasEmpty = Object.keys(config ?? {}).length === 0
-const shouldAutoUpdate = Math.random() < AUTO_UPDATE_PROBABILITY
+const shouldAutoUpdate = config?.autoUpdate !== 'never' && Math.random() < AUTO_UPDATE_PROBABILITY
 
 const messageContent = args._.join(' ')
 
