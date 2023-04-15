@@ -63,21 +63,33 @@ To configure the specific ChatGPT model and system prompt used, you can type
 
 ## Commands and Arguments
 
+### Global Commands
+
+These commands are used for general ShellGPT-wide operations.
+
 | Argument      | Alias      | Description                                          |
 | ------------- | ---------- | ---------------------------------------------------- |
 | --help        |            | Show help                                            |
 | --config      | --cfg      | Configure the model and system prompt                |
 | --update      |            | Update ShellGPT to the latest version                |
+| --history     | -h         | List all past conversations                          |
+
+
+### Chat Commands
+
+These commands are for specific chats, either new or existing.
+
+| Argument      | Alias      | Description                                          |
+| ------------- | ---------- | ---------------------------------------------------- |
 | -             |            | Read from stdin                                      |
 | --continue    | --cont, -c | Continue the last conversation                       |
 | --exec        | -x         | Run the output as a shell command                    |
 | --name        | -n         | Name of chat from history to operate the command on  |
 | --retry       | -r         | Regenerate the last assistant message                |
-| --rewrite     | --rw, -w   | Rewrite the last user message                        |
+| --rewrite     | --rw, -w   | Rewrite the last user message & regenerate response  |
 | --print       | -p         | Print the last message in the conversation           |
 | --pop         |            | Remove the last message in the conversation          |
 | --slice       | -s         | Remove the first message in the conversation         |
-| --history     | -h         | List chat history                                    |
 | --dump        | -d         | Dump the entire chat history                         |
 | --fast        | -f         | Use the GPT-3.5-turbo model                          |
 | --system      | --sys      | Set a system prompt or context                       |
