@@ -44,7 +44,7 @@ gpt "Output a CSV of 10 notable cities in Japan with their name in English & Jap
 2. Run the following command to install ShellGPT:
 
 ```sh
-deno run -A https://deno.land/x/shellgpt/install.ts
+deno run -rA https://deno.land/x/shellgpt/install.ts
 ```
 
 ### Configuration
@@ -67,6 +67,7 @@ To configure the specific ChatGPT model and system prompt used, you can type
 | ------------- | ---------- | ---------------------------------------------------- |
 | --help        |            | Show help                                            |
 | --config      | --cfg      | Configure the model and system prompt                |
+| --update      |            | Update ShellGPT to the latest version                |
 | -             |            | Read from stdin                                      |
 | --continue    | --cont, -c | Continue the last conversation                       |
 | --exec        | -x         | Run the output as a shell command                    |
