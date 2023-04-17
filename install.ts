@@ -4,7 +4,7 @@ import { REPO_INSTALL_URL, getLatestVersion, install, isLatestVersion } from "./
 console.log(`%cShellGPT ${VERSION} installer`, 'font-size: 2em; font-weight: bold;')
 
 let config = await loadConfig()
-if (config) {
+if (config && Object.keys(config).length > 0) {
   console.log('Found existing config file at %c~/.gpt/config.json', 'font-weight: bold')
 }
 
@@ -27,12 +27,12 @@ if (!await isLatestVersion()) {
 
 if (!config) {
   console.log('Creating new config at %c~/.gpt/config.json', 'font-weight: bold')
-  config = DEFAULT_CONFIG
+  config = {...DEFAULT_CONFIG}
   saveConfig(config)
 }
 
 // What command should be used to invoke gpt?
-console.log(`\nWhat command should be used to invoke gpt?\n(default: %c${config.command ?? DEFAULT_CONFIG.command}%c, leave blank to use default)`, 'color: green', 'color: gray')
+console.log(`\nWhat command should be used to invoke gpt?\n(default: %c${config.command || DEFAULT_CONFIG.command}%c, leave blank to use default)`, 'color: green', 'color: gray')
 const command = prompt('>')
 if (command) {
   config.command = command

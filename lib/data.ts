@@ -1,7 +1,7 @@
 import { ChatCompletionRequest } from "./ai.ts"
 import { genDescriptiveNameForChat } from "./prompts.ts";
 
-export const VERSION = '0.2.5'
+export const VERSION = '0.2.6'
 export const AUTO_UPDATE_PROBABILITY = 0.1
 
 export type Config = {
@@ -19,7 +19,7 @@ export const DEFAULT_CONFIG: Config = {
   lastUpdated: new Date().toISOString(),
   version: VERSION,
   autoUpdate: 'prompt',
-  command: undefined,
+  command: 'gpt',
   latestName: undefined,
   hasDescriptiveName: undefined,
   model: undefined,
