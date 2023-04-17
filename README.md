@@ -47,6 +47,14 @@ gpt "Output a CSV of 10 notable cities in Japan with their name in English & Jap
 deno run -rA https://deno.land/x/shellgpt/install.ts
 ```
 
+3. Ensure `~/.deno/bin` is in your PATH.
+
+```sh
+export PATH="$HOME/.deno/bin:$PATH"
+```
+
+That's it! You can now use `gpt [my request]` - or whatever you named the script during installation.
+
 ### Configuration
 
 You must set the `OPENAI_API_KEY` environment variable in your current shell,
