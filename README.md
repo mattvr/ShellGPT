@@ -92,7 +92,9 @@ These commands are for specific chats, either new or existing.
 | -             |            | Read from stdin                                      |
 | --continue    | --cont, -c | Continue the last conversation                       |
 | --exec        | -x         | Run the output as a shell command                    |
+| --code        |            | Returns code as the response                         |
 | --name        | -n         | Name of chat from history to operate the command on  |
+| --repl        |            | Enters a REPL mode with continuous chat              |
 | --retry       | -r         | Regenerate the last assistant message                |
 | --rewrite     | --rw, -w   | Rewrite the last user message & regenerate response  |
 | --print       | -p         | Print the last message in the conversation           |
