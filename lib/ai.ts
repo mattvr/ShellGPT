@@ -129,7 +129,7 @@ export const getChatResponse = async (req: ChatCompletionRequest): Promise<strin
   }
 }
 
-type StreamResponse = {
+export type StreamResponse = {
   done: boolean;
   value: string | null;
   delta: string | null;

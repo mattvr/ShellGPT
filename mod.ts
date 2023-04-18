@@ -1,10 +1,10 @@
-import { AUTO_UPDATE_PROBABILITY, Config, DEFAULT_CONFIG, VERSION, getChat, getHistory, getOrCreateConfigFile, loadConfig, saveConfig, writeChat } from "./lib/data.ts";
-import { ChatCompletionRequest, Message, getChatResponse_stream } from "./lib/ai.ts";
-import { askQuestion, pullCharacter } from "./lib/lib.ts";
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { setExecutableCmdParamsForChat } from "./lib/prompts.ts";
-import { install, isLatestVersion } from "./lib/update.ts";
+import { ChatCompletionRequest, Message, StreamResponse, getChatResponse_stream } from "./lib/ai.ts";
+import { AUTO_UPDATE_PROBABILITY, Config, DEFAULT_CONFIG, getChat, getHistory, getOrCreateConfigFile, loadConfig, saveConfig, writeChat } from "./lib/data.ts";
+import { printCtrlSequence, pullCharacter } from "./lib/lib.ts";
+import { setCodeCmdParamsForChat, setExecutableCmdParamsForChat } from "./lib/prompts.ts";
 import { exec as shExec } from "./lib/shell.ts";
+import { install, isLatestVersion } from "./lib/update.ts";
 
 const args = parse(Deno.args, {
   boolean: [
@@ -46,6 +46,12 @@ const args = parse(Deno.args, {
 
     // Update (update ShellGPT)
     'update', 'u',
+
+    // REPL (continuous conversation)
+    'repl',
+
+    // Code mode (output code instead of text)
+    'code',
   ],
   string: [
     // Name (select a conversation from history to use)
@@ -57,6 +63,7 @@ const args = parse(Deno.args, {
     // Temperature (creativity)
     'temperature', 'temp', 't',
 
+    // Limit max tokens to output
     'max_tokens', 'max',
 
     // WPM (words per minute, speed of typing output)
@@ -70,6 +77,7 @@ const args = parse(Deno.args, {
 // --- Parse Args ---
 const DEFAULT_MODEL = 'gpt-4'
 const DEFAULT_WPM = 800
+const DEFAULT_FAST_WPM = 1200
 const AVG_CHARS_PER_WORD = 4.8
 
 const help = args.help
@@ -87,16 +95,19 @@ const print = args.p || args.print
 const slice = args.s || args.slice
 const dump = args.dump || args.d
 const cont = slice || pop || retry || rewrite || print || dump || (Boolean(args.c || args.cont || args.continue))
-const wpm = args.wpm ? Number(args.wpm) : DEFAULT_WPM
+const wpm = args.wpm ? Number(args.wpm) : fast ? DEFAULT_FAST_WPM : DEFAULT_WPM
 const history = args.h || args.history
 const system = args.sys || args.system
 const maxTokens = args.max || args.max_tokens
 const readStdin = args._.at(0) === '-' || args._.at(-1) === '-'
+const repl = args.repl
+const code = args.code
 // --- END Parse Args ---
 
 let config = await loadConfig()
 const gptCommand = config?.command ?? DEFAULT_CONFIG.command
 const configWasEmpty = Object.keys(config ?? {}).length === 0
+const messageWasEmpty = args._.length === 0
 const shouldAutoUpdate = config?.autoUpdate !== 'never' && Math.random() < AUTO_UPDATE_PROBABILITY
 
 const messageContent = args._.join(' ')
@@ -120,6 +131,8 @@ Options:
   --help              Show this help message
   --config            Runs configuration
   --update            Updates ShellGPT
+  
+
   -                   Read message from stdin
   -c, --continue      Continue the last conversation
   -x, --exec          Run the generated response as a shell command
@@ -131,6 +144,8 @@ Options:
   -h, --history       List chat history
   -d, --dump          Dump the entire chat history
   -f, --fast          Use GPT-3.5-turbo model (faster)
+  --repl              Start a continuous conversation
+  --code              Output code instead of chat text
 
   -n, --name NAME     Select a conversation from history to use
   --sys, --system     Set a system prompt/context
@@ -343,6 +358,8 @@ if (!retry && !empty) {
 
 if (exec) {
   setExecutableCmdParamsForChat(req)
+} else if (code) {
+  setCodeCmdParamsForChat(req)
 }
 
 if (history) {
@@ -360,14 +377,16 @@ if (history) {
 }
 // --- END HANDLE ARGS ---
 
-let streamResponse = null
+let streamResponse: AsyncIterableIterator<StreamResponse> | null = null
 
-try {
-  streamResponse = await getChatResponse_stream(req);
-}
-catch (e) {
-  console.error('Unhandled error', e)
-  Deno.exit()
+const doStreamResponse = async () => {
+  try {
+    streamResponse = await getChatResponse_stream(req);
+  }
+  catch (e) {
+    console.error('Unhandled error', e)
+    Deno.exit()
+  }
 }
 
 // STATE
@@ -377,8 +396,16 @@ let responseStr = ''
 let intermediateStr = ''
 let printStr = ''
 
+if (repl && messageWasEmpty) {
+  done = 'with_net'
+}
+else {
+  await doStreamResponse()
+}
+
 // Done, write it out
 const flush = async () => {
+  streamResponse = null
   const text = new TextEncoder().encode('\n')
   await Deno.stdout.write(text)
 
@@ -401,24 +428,56 @@ const flush = async () => {
   } else if (exec && readStdin) {
     console.log('(exec not currently supported when reading from stdin)')
   }
+
+  if (repl) {
+    responseStr = ''
+
+    await printCtrlSequence('blue')
+    await printCtrlSequence('bold')
+
+    const promptValue = prompt(`\n>`)
+
+    // print reset ctrl sequence
+    await printCtrlSequence('reset')
+
+    if (promptValue) {
+      // do it
+      req.messages.push({
+        content: promptValue,
+        role: 'user'
+      })
+      done = 'none'
+      await doStreamResponse()
+    }
+  }
+  else {
+    Deno.exit()
+  }
 }
 
 // Push strings
 {
   (async () => {
-    try {
-      for await (const response of streamResponse) {
-        if (response.delta) {
-          responseStr += response.delta
-          intermediateStr += response.delta
+    while (true) {
+      if (done !== 'none' || !streamResponse) {
+        // Spin wait
+        await new Promise(resolve => setTimeout(resolve))
+        continue
+      }
+      try {
+        for await (const response of streamResponse as AsyncIterableIterator<StreamResponse>) {
+          if (response.delta) {
+            responseStr += response.delta
+            intermediateStr += response.delta
+          }
         }
       }
+      catch (e) {
+        console.error('Unhandled error', e)
+        Deno.exit(1)
+      }
+      done = 'with_net';
     }
-    catch (e) {
-      console.error('Unhandled error', e)
-      Deno.exit(1)
-    }
-    done = 'with_net';
   })()
 }
 
@@ -427,22 +486,29 @@ let startTime = -1
 const targetCps = (AVG_CHARS_PER_WORD * wpm) / 60
 {
   (async () => {
-    // Go through characters one-by-one and write
-    while ((done as DoneType) !== 'with_net' || intermediateStr.length > 0) {
-      if (startTime < 0) {
-        startTime = Date.now()
+    while (true) {
+      if (done === 'with_write' || (done as DoneType) === 'with_print') {
+        // Spin wait
+        await new Promise(resolve => setTimeout(resolve))
+        continue
       }
-      const { char, str } = pullCharacter(intermediateStr)
+      // Go through characters one-by-one and write
+      while ((done as DoneType) !== 'with_net' || intermediateStr.length > 0) {
+        if (startTime < 0) {
+          startTime = Date.now()
+        }
+        const { char, str } = pullCharacter(intermediateStr)
 
-      printStr += char
-      intermediateStr = str
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(true)
-        }, 1000 / targetCps)
-      })
+        printStr += char
+        intermediateStr = str
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(true)
+          }, 1000 / targetCps)
+        })
+      }
+      done = 'with_write'
     }
-    done = 'with_write'
   })();
 }
 
@@ -453,7 +519,6 @@ const targetCps = (AVG_CHARS_PER_WORD * wpm) / 60
     printStr = ''
     if (!latest && done === 'with_write') {
       await flush()
-      Deno.exit()
     }
     if (latest) {
       const text = new TextEncoder().encode(latest)

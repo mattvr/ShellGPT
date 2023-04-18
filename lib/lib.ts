@@ -39,6 +39,25 @@ export async function askQuestion(question: string): Promise<string> {
   }
 }
 
+export const printCtrlSequence = async (sequence: 'blue' | 'bold' | 'reset' | 'blue-bold'): Promise<void> => {
+  let text;
+  switch (sequence) {
+    case 'blue':
+      text = '\x1b[34m';
+      break;
+    case 'bold':
+      text = '\x1b[1m';
+      break;
+    case 'reset':
+      text = '\x1b[0m';
+      break;
+    default:
+      text = '';
+  }
+
+  await Deno.stdout.write(new TextEncoder().encode(text));
+}
+
 export const mergeStrings = (a: string, b: string): string => {
   return a + b
 }
@@ -56,10 +75,10 @@ export const pullCharacter = (a: string): {
 
   // Grapheme split
   const stringArray = [...a];
-  
+
   // Slice the array
   const slicedArray = stringArray.slice(1);
-  
+
   // Join back into string
   return {
     char: stringArray[0],

@@ -26,3 +26,12 @@ export const setExecutableCmdParamsForChat = (req: ChatCompletionRequest): ChatC
   })
   return req
 }
+
+export const setCodeCmdParamsForChat = (req: ChatCompletionRequest): ChatCompletionRequest => {
+  req.messages = req.messages.filter(m => m.role !== 'system') // other system messages tend to conflict
+  req.messages.push({
+    role: 'system',
+    content: `[IMPORTANT INSTRUCTION] Reply ONLY with code (and comments) for the given prompt and no other text or chat.`
+  })
+  return req
+}
