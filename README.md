@@ -47,7 +47,7 @@ gpt "Output a CSV of 10 notable cities in Japan with their name in English & Jap
 deno run -rA https://deno.land/x/shellgpt/install.ts
 ```
 
-3. Ensure `~/.deno/bin` is in your PATH.
+3. Ensure `$HOME/.deno/bin` is in your PATH.
 
 ```sh
 export PATH="$HOME/.deno/bin:$PATH"
@@ -150,7 +150,7 @@ gpt --history
 # cat-tweets
 # ...
 
-gpt -n "cat-tweets" "Generate more, please"
+gpt --name "cat-tweets" "Generate more, please"
 
 gpt --dump # Dumps entire chat history
 ```
@@ -165,4 +165,9 @@ Increasing the speed of the output using GPT-3.5-turbo and custom WPM:
 
 ```sh
 gpt --fast --wpm 1500 "How can I improve my programming skills?"
+```
+
+Interactive coding session:
+```sh
+gpt --code --repl "Write a typescript function that prints the first 100 primes"
 ```

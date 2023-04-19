@@ -94,7 +94,7 @@ export const install = async (config: Config, isUpdate = false): Promise<{
 
   let installCommand: string;
   if (isUpdate) {
-    installCommand = `deno install -frA -n ${alias} ${REPO_MOD_URL}@${latestVersion}`
+    installCommand = `deno install -frA -n ${alias} ${REPO_URL}@${latestVersion}/mod.ts`
   } else {
     const modPath = Deno.mainModule.replace('install.ts', 'mod.ts')
     installCommand = `deno install -frA -n ${alias} ${modPath}`
