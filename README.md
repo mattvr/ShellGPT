@@ -53,7 +53,7 @@ deno run -rA https://deno.land/x/shellgpt/install.ts
 export PATH="$HOME/.deno/bin:$PATH"
 ```
 
-That's it! You can now use `gpt [my request]` - or whatever you named the script during installation.
+After restarting your shell, that's it! You can now use `gpt [my request]` - or whatever you named the script during installation.
 
 ### Configuration
 
