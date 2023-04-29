@@ -1,225 +1,204 @@
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
-const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
+import {
+  ChatCompetionStreamError,
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+  ChatCompletionStreamResponse,
+} from "./ai-types.ts";
+import { loadConfig } from "./data.ts";
 
-if (!OPENAI_API_KEY) {
-  console.error('Please set the OPENAI_API_KEY environment variable')
-  Deno.exit(1)
-}
+let OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 
-const config = {
-  debug: false
-}
+export const aiConfig = {
+  debug: false,
+};
 
-type Role = "system" | "user" | "assistant";
-
-export interface Message {
-  role: Role;
-  content: string;
-}
-
-export interface ChatCompletionRequest {
-  model: 'gpt-3.5-turbo' | 'gpt-4' | string
-  messages: Message[];
-  temperature?: number;
-  top_p?: number;
-  n?: number;
-  stream?: boolean;
-  stop?: string | string[];
-  max_tokens?: number;
-  presence_penalty?: number;
-  frequency_penalty?: number;
-  logit_bias?: Record<string, number>;
-  user?: string;
-}
-
-interface Choice {
-  index: number;
-  message: Message;
-  finish_reason: "stop" | "length" | "content_filter" | "null";
-}
-
-interface ChatCompletionResponse {
-  id: string;
-  object: "chat.completion";
-  created: number;
-  choices: Choice[];
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
-
-interface SpeechToTextRequest {
-  file: File; // You'll need to replace the file path in your curl call with a File object
-  model: 'whisper-1';
-}
-
-interface Delta {
-  role?: Role;
-  content?: string;
-}
-
-interface StreamChoice {
-  delta: Delta;
-  index: number;
-  finish_reason: "stop" | "length" | "content_filter" | "null" | null;
-}
-
-interface ChatCompletionStreamResponse {
-  id: string;
-  object: "chat.completion.chunk";
-  created: number;
-  model: string;
-  choices: StreamChoice[];
-}
-
-interface ChatCompetionStreamError {
-  "error": {
-    "message": string | null,
-    "type": string | null
-    "param": string | null
-    "code": string | null
+export const checkAPIKey = async () => {
+  if (OPENAI_API_KEY) {
+    return;
   }
-}
+  const config = await loadConfig();
+  if (config?.openAiApiKey) {
+    OPENAI_API_KEY = config.openAiApiKey;
+    return;
+  }
 
-export const getChatResponse_withRetries = async (req: ChatCompletionRequest, retries = 3): Promise<string | null> => {
-  let response = null
+  console.error(
+    "Please set the OPENAI_API_KEY environment variable in your current shell, or configure using `gpt --config`",
+  );
+  Deno.exit(1);
+};
+
+export const getChatResponse_withRetries = async (
+  req: ChatCompletionRequest,
+  retries = 3,
+): Promise<string | null> => {
+  let response = null;
   for (let i = 0; i < retries; i++) {
-    response = await getChatResponse(req)
+    response = await getChatResponse(req);
     if (response) {
-      break
+      break;
     }
   }
-  return response
-}
+  return response;
+};
 
-export const getChatResponse = async (req: ChatCompletionRequest): Promise<string | null> => {
-  if (config.debug) {
-    console.log('Request to OpenAI', req)
+export const getChatResponse = async (
+  req: ChatCompletionRequest,
+): Promise<string | null> => {
+  if (aiConfig.debug) {
+    console.log("Request to OpenAI", req);
   }
+  await checkAPIKey();
 
   const newReq = {
     ...req,
-    messages: [...req.messages]
-  }
+    messages: [...req.messages],
+  };
 
   const response = await fetch(OPENAI_CHAT_URL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ ...newReq, stream: false })
-  })
+    body: JSON.stringify({ ...newReq, stream: false }),
+  });
   try {
-    const data = await response.json() as ChatCompletionResponse
-    if (config.debug) {
-      console.log('Response from OpenAI', data)
+    const data = await response.json() as ChatCompletionResponse;
+    if (aiConfig.debug) {
+      console.log("Response from OpenAI", data);
     }
-    const content = data?.choices?.[0]?.message?.content
+    const content = data?.choices?.[0]?.message?.content;
     if (!content) {
-      console.error('Invalid response from OpenAI', data)
-      return null
+      console.error("Invalid response from OpenAI", data);
+      return null;
     }
-    return content
+    return content;
   } catch (e) {
-    console.error('Failed to reply', e)
-    return null
+    console.error("Failed to reply", e);
+    return null;
   }
-}
+};
 
 export type StreamResponse = {
   done: boolean;
   value: string | null;
   delta: string | null;
-}
+};
 
-export const getChatResponse_stream = async (req: ChatCompletionRequest): Promise<AsyncIterableIterator<StreamResponse>> => {
-  if (config.debug) {
-    console.log('Request to OpenAI', req)
+export const getChatResponse_stream = async (
+  req: ChatCompletionRequest,
+): Promise<AsyncIterableIterator<StreamResponse>> => {
+  if (aiConfig.debug) {
+    console.log("Request to OpenAI", req);
   }
+  await checkAPIKey();
 
-  req.stream = true
+  req.stream = true;
 
   const response = await fetch(OPENAI_CHAT_URL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(req)
-  })
+    body: JSON.stringify(req),
+  });
 
-  const decoder = new TextDecoder('utf-8')
-  const reader = response.body!.getReader()
+  const decoder = new TextDecoder("utf-8");
+  const reader = response.body!.getReader();
 
-  let fullMessage = ''
+  let fullMessage = "";
 
   const iterator = {
     async next(): Promise<IteratorResult<StreamResponse>> {
       try {
-        const { done, value } = await reader.read()
+        const { done, value } = await reader.read();
         if (done) {
           // DONE by stream close
-          return { done: true, value: { done: true, value: fullMessage, delta: null } }
+          return {
+            done: true,
+            value: { done: true, value: fullMessage, delta: null },
+          };
         }
 
         // TODO: handle multiple messages
-        const rawData = decoder.decode(value)
+        const rawData = decoder.decode(value);
         const chunks = rawData.split("\n\n");
 
-        let newContent = ''
+        let newContent = "";
         // accumulate the chunks
         for (const chunk of chunks) {
-          const data = chunk.replace('data: ', '')
+          const data = chunk.replace("data: ", "");
           if (!data) {
-            continue
+            continue;
           }
-          if (data === '[DONE]') {
+          if (data === "[DONE]") {
             // DONE by final message
-            return { done: true, value: { done: true, value: fullMessage, delta: null } }
+            return {
+              done: true,
+              value: { done: true, value: fullMessage, delta: null },
+            };
           }
 
-          let parsed = null
+          let parsed = null;
           // remove the "data: " from the beginning of the message
           try {
-            parsed = JSON.parse(data) as ChatCompletionStreamResponse
+            parsed = JSON.parse(data) as ChatCompletionStreamResponse;
 
             if (parsed.choices[0].finish_reason) {
               // DONE by incoming final message
-              return { done: true, value: { done: true, value: fullMessage, delta: null } }
+              return {
+                done: true,
+                value: { done: true, value: fullMessage, delta: null },
+              };
             }
 
-            newContent += parsed.choices[0]?.delta?.content ?? ''
-          }
-          catch (e: unknown) {
+            newContent += parsed.choices[0]?.delta?.content ?? "";
+          } catch (e: unknown) {
             // throw with added context
-            const error = (parsed as unknown as ChatCompetionStreamError | null)?.error
-            if (error?.code === 'model_not_found') {
-              console.error(`Failed to find selected OpenAI model ${req.model}. Select a valid model from: https://platform.openai.com/docs/models/model-endpoint-compatibility by using \`gpt --config\`
-              
-              You may need to apply for access to GPT-4 via https://openai.com/waitlist/gpt-4-api. Use "gpt-3.5-turbo" in the meantime.`)
+            const error = (parsed as unknown as ChatCompetionStreamError | null)
+              ?.error;
+            if (error?.code === "model_not_found") {
+              console.error(
+                `%cFailed to find selected OpenAI model: ${req.model}.\n\nSelect a valid model by using \`gpt --config\`%c
+
+You may need to apply for access to GPT-4 via https://openai.com/waitlist/gpt-4-api.\n\n%cUse "gpt-3.5-turbo"%c (or another model from https://platform.openai.com/docs/models/model-endpoint-compatibility) in the meantime.`,
+                "font-weight: bold;",
+                "font-weight: normal;",
+                "font-weight: bold;",
+                "font-weight: normal;",
+              );
+              Deno.exit(1);
+            } else {
+              console.error(data);
             }
-            else {
-              console.error(data)
-            }
-            throw e
+            throw e;
           }
         }
 
-        fullMessage = (fullMessage + newContent)
-        return { value: { done: false, value: fullMessage, delta: newContent || null }, done: false }
-      }
-      catch (e: unknown) {
-        console.error('Failed to parse message', e)
-        return { value: { done: true, value: fullMessage + '[error]', delta: '[error]' }, done: true }
+        fullMessage = fullMessage + newContent;
+        return {
+          value: { done: false, value: fullMessage, delta: newContent || null },
+          done: false,
+        };
+      } catch (e: unknown) {
+        console.error("Failed to parse message", e);
+        return {
+          value: {
+            done: true,
+            value: fullMessage + "[error]",
+            delta: "[error]",
+          },
+          done: true,
+        };
       }
     },
     [Symbol.asyncIterator]() {
-      return this
-    }
-  }
+      return this;
+    },
+  };
 
-  return iterator
-}
+  return iterator;
+};

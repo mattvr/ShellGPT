@@ -2,7 +2,8 @@
 
 #### [[ <img src="https://user-images.githubusercontent.com/4052466/230916740-3ca70970-67fd-45f2-9a22-c0e51e4292fc.svg" /> Introducing ShellGPT ]](https://twitter.com/matt_fvr/status/1645419221634125828)
 
-A command-line tool that allows you to interact with GPT-4 directly from your terminal.
+A command-line tool that allows you to interact with GPT-4 directly from your
+terminal.
 
 https://user-images.githubusercontent.com/4052466/230909567-3569f34c-b145-4cd8-8e55-5445bba00ba8.mp4
 
@@ -39,7 +40,8 @@ gpt "Output a CSV of 10 notable cities in Japan with their name in English & Jap
 
 ## Installation
 
-1. Install the [Deno runtime](https://deno.land/manual/getting_started/installation).
+1. Install the
+   [Deno runtime](https://deno.land/manual/getting_started/installation).
 
 2. Run the following command to install ShellGPT:
 
@@ -64,9 +66,11 @@ using a key obtained from https://platform.openai.com/account/api-keys:
 export OPENAI_API_KEY=...
 ```
 
-To use the GPT-4 model (recommended as it produces much better results), you'll need to apply for access via [this link](https://openai.com/waitlist/gpt-4-api). Note that it is more expensive, however.
+To use the GPT-4 model (recommended as it produces much better results), you'll
+need to apply for access via [this link](https://openai.com/waitlist/gpt-4-api).
+Note that it is more expensive, however.
 
-To configure the specific ChatGPT model and system prompt used, you can type
+To configure the specific ChatGPT model, system prompt used, and more, you can type
 `gpt --config`
 
 ## Commands and Arguments
@@ -75,13 +79,12 @@ To configure the specific ChatGPT model and system prompt used, you can type
 
 These commands are used for general ShellGPT-wide operations.
 
-| Argument      | Alias      | Description                                          |
-| ------------- | ---------- | ---------------------------------------------------- |
-| --help        |            | Show help                                            |
-| --config      | --cfg      | Configure the model and system prompt                |
-| --update      |            | Update ShellGPT to the latest version                |
-| --history     | -h         | List all past conversations                          |
-
+| Argument  | Alias | Description                           |
+| --------- | ----- | ------------------------------------- |
+| --help    |       | Show help                             |
+| --config  | --cfg | Configure the model and system prompt |
+| --update  |       | Update ShellGPT to the latest version |
+| --history | -h    | List all past conversations           |
 
 ### Chat Commands
 
@@ -107,13 +110,15 @@ These commands are for specific chats, either new or existing.
 | --wpm         |            | Words per minute, control the speed of typing output |
 | --max_tokens  | --max      | Maximum number of tokens to generate                 |
 | --model       | -m         | Manually use a different OpenAI model                |
+| --debug       |            | Print OpenAI API information                         |
 
 ## Features
 
 Shell-GPT has some useful and unique features:
 
 - Execute shell commands with a confirmation step (just pass `-x`).
-- Supports input/output piping for simple file creation and transformation (see [Basic Usage](#basic-usage)).
+- Supports input/output piping for simple file creation and transformation (see
+  [Basic Usage](#basic-usage)).
 - Utility commands for convenient chat history viewing and editing.
 - Smooth, streaming output, resembling human typing rather than delayed or
   choppy responses.
@@ -168,6 +173,7 @@ gpt --fast --wpm 1500 "How can I improve my programming skills?"
 ```
 
 Interactive coding session:
+
 ```sh
 gpt --code --repl "Write a typescript function that prints the first 100 primes"
 ```
