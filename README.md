@@ -5,7 +5,7 @@
 A command-line tool that allows you to interact with GPT-4 directly from your
 terminal.
 
-https://user-images.githubusercontent.com/4052466/230909567-3569f34c-b145-4cd8-8e55-5445bba00ba8.mp4
+https://github.com/mattvr/ShellGPT/assets/4052466/4a72a1b2-2d60-44ff-b491-8057146d71ae
 
 ## Basic Usage
 
