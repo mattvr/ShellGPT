@@ -1,7 +1,7 @@
 import { ChatCompletionRequest } from "./ai-types.ts";
 import { genDescriptiveNameForChat } from "./prompts.ts";
 
-export const VERSION = "0.3.0";
+export const VERSION = "0.3.1";
 export const AUTO_UPDATE_PROBABILITY = 0.1;
 
 export type Config = {
@@ -14,6 +14,7 @@ export type Config = {
   model?: string;
   systemPrompt?: string;
   openAiApiKey?: string;
+  wpm?: number;
 };
 
 export const DEFAULT_CONFIG: Config = {
@@ -26,6 +27,7 @@ export const DEFAULT_CONFIG: Config = {
   model: undefined,
   systemPrompt: undefined,
   openAiApiKey: undefined,
+  wpm: undefined,
 };
 
 let cachedConfig: Config | null = null;
@@ -151,7 +153,7 @@ const meta_write = async (
       `${await getOrCreateHistoryPath()}/${latestName}.json`;
     let finalFullPath = latestFullPath;
 
-    let hasDescriptiveName = !isNewOrName && config?.hasDescriptiveName;
+    let hasDescriptiveName = !isNewOrName || config?.hasDescriptiveName;
     if (!hasDescriptiveName && req.messages.length >= 5) {
       // Write out a descriptive name for continued chats of a certain length
       const descName = await genDescriptiveNameForChat(req);

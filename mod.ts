@@ -81,6 +81,10 @@ const args = parse(Deno.args, {
 
     // Debug (print debug info)
     "debug",
+
+    // System (primary input treated as system prompt)
+    "as-system",
+    "as-sys",
   ],
   string: [
     // Name (select a conversation from history to use)
@@ -112,7 +116,6 @@ const args = parse(Deno.args, {
 // --- Parse Args ---
 const DEFAULT_MODEL = "gpt-3.5-turbo";
 const DEFAULT_WPM = 800;
-const DEFAULT_FAST_WPM = 1200;
 const AVG_CHARS_PER_WORD = 4.8;
 
 const help = args.help;
@@ -131,7 +134,6 @@ const slice = args.s || args.slice;
 const dump = args.dump || args.d;
 const cont = slice || pop || retry || rewrite || print || dump ||
   (Boolean(args.c || args.cont || args.continue));
-const wpm = args.wpm ? Number(args.wpm) : fast ? DEFAULT_FAST_WPM : DEFAULT_WPM;
 const history = args.h || args.history;
 const system = args.sys || args.system;
 const maxTokens = args.max || args.max_tokens;
@@ -139,10 +141,13 @@ const readStdin = args._.at(0) === "-" || args._.at(-1) === "-";
 const repl = args.repl;
 const code = args.code;
 const debug = args.debug;
+const asSys = args["as-sys"] || args["as-system"];
+const bumpSys = args["as-sys"] || args["as-system"];
 // --- END Parse Args ---
 
 let config = await loadConfig();
 const gptCommand = config?.command ?? DEFAULT_CONFIG.command;
+const wpm = args.wpm ? Number(args.wpm) : config?.wpm || DEFAULT_WPM;
 const configWasEmpty = Object.keys(config ?? {}).length === 0;
 const messageWasEmpty = args._.length === 0;
 const shouldAutoUpdate = config?.autoUpdate !== "never" &&
@@ -151,7 +156,7 @@ const shouldAutoUpdate = config?.autoUpdate !== "never" &&
 const messageContent = args._.join(" ");
 
 const message: Message = {
-  role: "user",
+  role: asSys ? "system" : "user",
   content: messageContent,
 };
 
@@ -186,9 +191,11 @@ Options:
   -f, --fast          Use GPT-3.5-turbo model (faster)
   --repl              Start a continuous conversation
   --code              Output code instead of chat text
+  --bump-sys          Bump the most recent system prompt/context to front
 
   -n, --name NAME     Select a conversation from history to use
-  --sys, --system     Set a system prompt/context
+  --sys[tem]          Set a system prompt/context
+  --as-sys[tem]       Treat the primary input as a system prompt
   -t, --temp          Set the creativity temperature
   --wpm WPM           Set the words per minute
   --max MAX_TOKENS    Set the maximum number of tokens
@@ -465,6 +472,22 @@ if (history) {
   }
   Deno.exit();
 }
+
+if (bumpSys) {
+  let mostRecentSystemIndex = -1;
+  for (let i = req.messages.length - 1; i > 0; i--) {
+    if (req.messages[i].role === "system") {
+      mostRecentSystemIndex = i;
+      break;
+    }
+  }
+
+  // splice+push it
+  if (mostRecentSystemIndex !== -1) {
+    const systemMessage = req.messages.splice(mostRecentSystemIndex, 1)[0];
+    req.messages.push(systemMessage);
+  }
+}
 // --- END HANDLE ARGS ---
 
 let streamResponse: AsyncIterableIterator<StreamResponse> | null = null;
@@ -479,8 +502,8 @@ const doStreamResponse = async () => {
 };
 
 // STATE
-type DoneType = "with_net" | "with_write" | "with_print" | "none";
-let done: DoneType = "none";
+type DoneType = "none" | "with_net" | "with_write" | "with_print";
+let done: DoneType = "none"; // none -> with_net -> with_write -> with_print -> [done]
 let responseStr = "";
 let intermediateStr = "";
 let printStr = "";
@@ -508,8 +531,8 @@ const flush = async () => {
     console.log(
       `\n%cAre you SURE you wish to run the above command? (y/N):`,
       "color: red; font-weight: bold;",
-    )
-    const promptValue = prompt('> ');
+    );
+    const promptValue = prompt("> ");
     if (["y", "yes"].includes(promptValue?.toLowerCase() ?? "")) {
       // do it
       await shExec(responseStr);
@@ -562,22 +585,35 @@ const flush = async () => {
         ) {
           if (response.delta) {
             responseStr += response.delta;
-            intermediateStr += response.delta;
+
+            if (wpm >= 0) {
+              // Write to a buffer
+              intermediateStr += response.delta;
+            }
+            else {
+              // Print immediately
+              printStr += response.delta;
+            }
           }
         }
       } catch (e) {
         console.error("Unhandled error", e);
         Deno.exit(1);
       }
-      done = "with_net";
+
+      if (wpm >= 0) {
+        done = "with_net";
+      } else {
+        done = "with_write";
+      }
     }
   })();
 }
 
-// Intermediate string
-let startTime = -1;
-const targetCps = (AVG_CHARS_PER_WORD * wpm) / 60;
-{
+if (wpm >= 0) {
+  // Writes to a buffer so we can print at a desired WPM
+  let startTime = -1;
+  const targetCps = (AVG_CHARS_PER_WORD * wpm) / 60;
   (async () => {
     while (true) {
       if (done === "with_write" || (done as DoneType) === "with_print") {
@@ -605,7 +641,7 @@ const targetCps = (AVG_CHARS_PER_WORD * wpm) / 60;
   })();
 }
 
-// Pull strings
+// Pull strings to write as soon as available
 {
   const consumeFn = async () => {
     const latest = printStr;
