@@ -514,6 +514,109 @@ if (repl && messageWasEmpty) {
   await doStreamResponse();
 }
 
+let nextBuffer = "";
+async function readInput() {
+  let strBuffer = "";
+  let arrayBuffer = new Uint8Array(1); // Buffer to hold byte data from stdin
+
+  let done = false;
+  let newline = false;
+
+  const updateFn = async () => {
+    // read from stdin
+    const n = await Deno.stdin.read(arrayBuffer)
+
+    let curBuffer = ""
+    const wasDone = done
+
+    if (n != null && n > 0) {
+      const text = new TextDecoder().decode(arrayBuffer)
+
+      for (const char of text) {
+        const code = char.charCodeAt(0);
+        if (code === 13 || code === 10) {
+          // carriage return or newline
+          newline = true
+          curBuffer += "\n";
+          await Deno.stdout.write(new TextEncoder().encode("\n"));
+        }
+        else if (code === 127) {
+          // backspace
+          const wasEmpty = strBuffer.length === 0;
+          curBuffer = curBuffer.slice(0, -1);
+          strBuffer = strBuffer.slice(0, -1);
+
+          if (!wasEmpty) {
+            await Deno.stdout.write(new TextEncoder().encode("\b \b"));
+          }
+        }
+        else {
+          // any other character
+          // console.warn("Z", char)
+          await Deno.stdout.write(arrayBuffer);
+          curBuffer += char;
+          newline = false;
+        }
+      }
+
+      if (wasDone) {
+        // We already finished reading this stream, so push to next reader
+        nextBuffer = curBuffer
+      }
+      else {
+        strBuffer += curBuffer
+      }
+
+    }
+    else {
+      done = true;
+      newline = true;
+      return;
+    }
+  };
+
+  nextBuffer = ""
+  Deno.stdin.setRaw(false)
+  Deno.stdin.setRaw(true, { cbreak: true })
+
+  await new Promise((resolve) => {
+    (
+      async () => {
+        strBuffer = ""
+        arrayBuffer = new Uint8Array(1)
+        while (!done) {
+          if (nextBuffer) {
+            // HACK: there may be another stdin reader which we want to push results from
+            // Use this instead of AbortController for now
+            strBuffer = `${nextBuffer}${strBuffer}`
+            nextBuffer = ""
+          }
+          const wasNewline = newline;
+          if (wasNewline) {
+            // wait for a moment for typing
+            setTimeout(() => {
+              if (!newline) {
+                return
+              }
+              done = true
+              resolve(true)
+            }, 250)
+          }
+          await updateFn();
+          if (wasNewline && newline) {
+            done = true;
+          }
+        }
+        resolve(true)
+      }
+    )()
+  })
+
+  Deno.stdin.setRaw(false)
+
+  return strBuffer
+}
+
 // Done, write it out
 const flush = async () => {
   streamResponse = null;
@@ -549,7 +652,9 @@ const flush = async () => {
     await printCtrlSequence("blue");
     await printCtrlSequence("bold");
 
-    const promptValue = prompt(`\n>`);
+    await Deno.stdout.write(new TextEncoder().encode(`\n> `));
+
+    const promptValue = await readInput();
 
     // print reset ctrl sequence
     await printCtrlSequence("reset");

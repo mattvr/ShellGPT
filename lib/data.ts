@@ -1,7 +1,7 @@
 import { ChatCompletionRequest } from "./ai-types.ts";
 import { genDescriptiveNameForChat } from "./prompts.ts";
 
-export const VERSION = "0.3.1";
+export const VERSION = "0.3.2";
 export const AUTO_UPDATE_PROBABILITY = 0.1;
 
 export type Config = {

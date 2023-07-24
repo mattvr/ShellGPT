@@ -129,7 +129,7 @@ export const install = async (config: Config, isUpdate = false): Promise<{
       }
     }
     else {
-      console.log(`Would you like to run the above command to install ShellGPT?\n%c(y)es [default]\n%c(n)o\n%cleave blank to use default`, 'color: green', 'color: unset', 'color: gray')
+      console.log(`Would you like to run the above command to complete ShellGPT installation?\n%c(y)es [default]\n%c(n)o\n%cleave blank to use default`, 'color: green', 'color: unset', 'color: gray')
       const result = prompt('>')
 
       if (result && (result.toLowerCase() === 'n' || result.toLowerCase() === 'no')) {
