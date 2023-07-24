@@ -114,7 +114,7 @@ const args = parse(Deno.args, {
 });
 
 // --- Parse Args ---
-const DEFAULT_MODEL = "gpt-3.5-turbo";
+const DEFAULT_MODEL = "gpt-4";
 const DEFAULT_WPM = 800;
 const AVG_CHARS_PER_WORD = 4.8;
 
