@@ -115,7 +115,7 @@ These commands are for specific chats, either new or existing.
 
 ### Other Commands
 
-These commands are for specific chats, either new or existing.
+These commands perform non-textual tasks.
 
 | Argument      | Alias      | Description                                          |
 | ------------- | ---------- | ---------------------------------------------------- |
