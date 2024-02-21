@@ -111,6 +111,15 @@ These commands are for specific chats, either new or existing.
 | --max_tokens  | --max      | Maximum number of tokens to generate                 |
 | --model       | -m         | Manually use a different OpenAI model                |
 | --debug       |            | Print OpenAI API information                         |
+| --lang        |            | Sets written or programming language of output       |
+
+### Other Commands
+
+These commands are for specific chats, either new or existing.
+
+| Argument      | Alias      | Description                                          |
+| ------------- | ---------- | ---------------------------------------------------- |
+| --img         | -i         | Respond with a generated image URL instead of text   |
 
 ## Features
 
@@ -170,6 +179,12 @@ Increasing the speed of the output using GPT-3.5-turbo and custom WPM:
 
 ```sh
 gpt --fast --wpm 1500 "How can I improve my programming skills?"
+```
+
+Output an image:
+
+```sh
+gpt --img "a corgi wearing cashmere pants hacking into myspace.com"
 ```
 
 Interactive coding session:
