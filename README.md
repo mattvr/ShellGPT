@@ -131,6 +131,7 @@ Shell-GPT has some useful and unique features:
 - Utility commands for convenient chat history viewing and editing.
 - Smooth, streaming output, resembling human typing rather than delayed or
   choppy responses.
+- Supports image generation and custom language input/output.
 - Built in Deno for better performance, granular permissions, and easier script
   modification.
 
