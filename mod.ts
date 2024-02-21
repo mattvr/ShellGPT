@@ -1,6 +1,5 @@
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { aiConfig, getChatResponse_stream, StreamResponse } from "./lib/ai.ts";
-import { ChatCompletionRequest, Message } from "./lib/ai-types.ts";
+import { aiConfig, getChatResponse_stream, getImageResponse, StreamResponse, ChatCompletionRequest, CreateImageRequest, Message } from "./lib/ai.ts";
 import {
   AUTO_UPDATE_PROBABILITY,
   Config,
@@ -16,6 +15,7 @@ import { printCtrlSequence, pullCharacter } from "./lib/lib.ts";
 import {
   setCodeCmdParamsForChat,
   setExecutableCmdParamsForChat,
+  setLanguageForChat,
 } from "./lib/prompts.ts";
 import { exec as shExec } from "./lib/shell.ts";
 import { install, isLatestVersion } from "./lib/update.ts";
@@ -85,6 +85,11 @@ const args = parse(Deno.args, {
     // System (primary input treated as system prompt)
     "as-system",
     "as-sys",
+
+    // Image
+    "image",
+    "img",
+    "i",
   ],
   string: [
     // Name (select a conversation from history to use)
@@ -110,11 +115,14 @@ const args = parse(Deno.args, {
     // Model (manually use a different OpenAI model)
     "model",
     "m",
+
+    // Language to use for programming or text generation
+    'lang'
   ],
 });
 
 // --- Parse Args ---
-const DEFAULT_MODEL = "gpt-4";
+const DEFAULT_MODEL = "gpt-4-turbo-preview";
 const DEFAULT_WPM = 800;
 const AVG_CHARS_PER_WORD = 4.8;
 
@@ -123,7 +131,7 @@ const name = args.name || args.n;
 const fast = args.f || args.fast;
 const updateConfig = args.config;
 const update = args.update || args.u;
-const model = fast ? "gpt-3.5-turbo" as const : (args.model ?? args.m);
+const model = fast ? "gpt-3.5-turbo-0125" as const : (args.model ?? args.m);
 const temp = args.t || args.temp || args.temperature;
 const exec = args.x || args.exec;
 const retry = args.r || args.retry;
@@ -143,6 +151,8 @@ const code = args.code;
 const debug = args.debug;
 const asSys = args["as-sys"] || args["as-system"];
 const bumpSys = args["as-sys"] || args["as-system"];
+const lang = args.lang
+const img = args.img || args.i
 // --- END Parse Args ---
 
 let config = await loadConfig();
@@ -192,6 +202,7 @@ Options:
   --repl              Start a continuous conversation
   --code              Output code instead of chat text
   --bump-sys          Bump the most recent system prompt/context to front
+  -i, --img           Output an image instead of text
 
   -n, --name NAME     Select a conversation from history to use
   --sys[tem]          Set a system prompt/context
@@ -211,6 +222,22 @@ Examples:
 // --- HANDLE ARGS ---
 if (debug) {
   aiConfig.debug = true;
+}
+if (img) {
+  const newReq: CreateImageRequest = {
+    quality: "hd",
+    response_format: "url",
+    size: "1024x1024",
+    prompt: messageContent ?? img,
+    model: "dall-e-3",
+  };
+  const response = await getImageResponse(newReq);
+  if (response) {
+    console.log(response);
+  } else {
+    console.log("(Failed to generate image)");
+  }
+  Deno.exit();
 }
 if (pop) {
   const lastMessage = req.messages.pop();
@@ -453,7 +480,9 @@ if (!retry && !empty) {
 if (exec) {
   setExecutableCmdParamsForChat(req);
 } else if (code) {
-  setCodeCmdParamsForChat(req);
+  setCodeCmdParamsForChat(req, lang);
+} else if (lang) {
+  setLanguageForChat(req, lang)
 }
 
 if (history) {
@@ -683,22 +712,24 @@ const flush = async () => {
         continue;
       }
       try {
-        for await (
-          const response of streamResponse as AsyncIterableIterator<
-            StreamResponse
-          >
-        ) {
-          if (response.delta) {
-            responseStr += response.delta;
+        const iterator = streamResponse as AsyncIterableIterator<StreamResponse>;
+
+        while (true) {
+          const response = await iterator.next();
+          if (response.value.delta) {
+            responseStr += response.value.delta;
 
             if (wpm >= 0) {
               // Write to a buffer
-              intermediateStr += response.delta;
+              intermediateStr += response.value.delta;
             }
             else {
               // Print immediately
-              printStr += response.delta;
+              printStr += response.value.delta;
             }
+          }
+          if (response.done) {
+            break;
           }
         }
       } catch (e) {
