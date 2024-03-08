@@ -66,12 +66,9 @@ using a key obtained from https://platform.openai.com/account/api-keys:
 export OPENAI_API_KEY=...
 ```
 
-To use the GPT-4 model (recommended as it produces much better results), you'll
-need to apply for access via [this link](https://openai.com/waitlist/gpt-4-api).
-Note that it is more expensive, however.
+You can also set `OPENAI_CHAT_URL` if you'd like to target a different OpenAI-compatible API endpoint (e.g. Local Llama, Anthropic, etc.).
 
-To configure the specific ChatGPT model, system prompt used, and more, you can type
-`gpt --config`
+To configure the specific ChatGPT model, system prompt used, and more, you can type `gpt --config`
 
 ## Commands and Arguments
 
