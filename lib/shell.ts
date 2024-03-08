@@ -1,5 +1,6 @@
 export function getExecPrefix(): string[] {
   const envShell = Deno.env.get('SHELL')
+  const platform = Deno.build.os
   if (envShell?.endsWith('pwsh.exe') || envShell?.endsWith('powershell.exe')) {
     return [envShell, '-Command']
   }
@@ -8,6 +9,9 @@ export function getExecPrefix(): string[] {
   }
   else if (envShell) {
     return [envShell, '-c']
+  }
+  else if (platform === 'windows') {
+    return ['cmd.exe', '/C']
   }
   else {
     return ['sh', '-c']

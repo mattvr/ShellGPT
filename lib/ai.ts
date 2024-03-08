@@ -133,8 +133,8 @@ export interface Image {
 
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
-const OPENAI_IMG_URL = "https://api.openai.com/v1/images/generations";
+const OPENAI_CHAT_URL = Deno.env.get("OPENAI_CHAT_URL") || "https://api.openai.com/v1/chat/completions";
+const OPENAI_IMG_URL = Deno.env.get("OPENAI_IMG_URL") || "https://api.openai.com/v1/images/generations";
 
 export const aiConfig = {
   debug: false,
