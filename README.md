@@ -3,7 +3,7 @@
 #### [[ <img src="https://user-images.githubusercontent.com/4052466/230916740-3ca70970-67fd-45f2-9a22-c0e51e4292fc.svg" /> Introducing ShellGPT ]](https://twitter.com/matt_fvr/status/1645419221634125828)
 
 A command-line tool that allows you to interact with GPT-4 directly from your
-terminal.
+terminal, including long form conversations via chat
 
 https://github.com/mattvr/ShellGPT/assets/4052466/4a72a1b2-2d60-44ff-b491-8057146d71ae
 
@@ -38,6 +38,18 @@ cat crash.log | gpt "Why is this crash occurring?" -
 gpt "Output a CSV of 10 notable cities in Japan with their name in English & Japanese plus a fun fact enclosed in quotes" > japan.csv
 ```
 
+Chat with gpt from the terminal
+
+```sh
+gpt --repl
+
+> hello there
+Hello! How can I assist you today?
+
+>
+```
+
+
 ## Installation
 
 1. Install the
@@ -55,7 +67,11 @@ deno run -rA https://deno.land/x/shellgpt/install.ts
 export PATH="$HOME/.deno/bin:$PATH"
 ```
 
-After restarting your shell, that's it! You can now use `gpt [my request]` - or whatever you named the script during installation.
+You can now use `gpt [my request]` - or whatever you named the script during installation
+
+That's it!
+
+Note: If you add that export line to your `.bashrc` or `.zshrc` (or equivalent), remember restarting your shell to get the updated `PATH`
 
 ### Configuration
 
