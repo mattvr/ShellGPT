@@ -67,11 +67,18 @@ deno run -rA https://deno.land/x/shellgpt/install.ts
 export PATH="$HOME/.deno/bin:$PATH"
 ```
 
+Note: If you add that export line to your `.bashrc` or `.zshrc` (or equivalent), remember restarting your shell to get the updated `PATH`
+
 You can now use `gpt [my request]` - or whatever you named the script during installation
 
 That's it!
 
-Note: If you add that export line to your `.bashrc` or `.zshrc` (or equivalent), remember restarting your shell to get the updated `PATH`
+
+Optional, update to the latest version
+
+```sh
+gpt --update
+```
 
 ### Configuration
 
