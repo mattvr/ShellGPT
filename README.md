@@ -190,3 +190,17 @@ Interactive coding session:
 ```sh
 gpt --code --repl "Write a typescript function that prints the first 100 primes"
 ```
+
+## Development
+
+To develop `gpt`, first clone the repo, make sure you have the Deno runtime installed (see [Installation instructions](#installation)), and then you can run the code with:
+
+```sh
+deno run -A mod.ts
+```
+
+For example, if you want to run an interactive chat session, you can do:
+
+```sh
+deno run -A mod.ts --repl "Write outline for ShellGPT's README.md file"
+```
