@@ -284,6 +284,9 @@ export const getChatResponse_stream = async (
           let parsed = null;
           try {
             parsed = JSON.parse(data) as ChatCompletionStreamResponse;
+            if ((parsed as unknown as ChatCompetionStreamError).error) {
+              throw new Error("error found");
+            }
 
             newContent += parsed.choices[0]?.delta?.content ?? "";
 
