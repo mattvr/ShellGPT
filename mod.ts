@@ -1,5 +1,5 @@
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { aiConfig, getChatResponse_stream, getImageResponse, StreamResponse, ChatCompletionRequest, CreateImageRequest, Message } from "./lib/ai.ts";
+import { aiConfig, getChatResponse_stream, getImageResponse, StreamResponse, ChatCompletionRequest, CreateImageRequest, Message, EmbeddingRequest, getEmbeddingResponse } from "./lib/ai.ts";
 import {
   AUTO_UPDATE_PROBABILITY,
   Config,
@@ -90,6 +90,9 @@ const args = parse(Deno.args, {
     "image",
     "img",
     "i",
+
+    // Embedding
+    "embed"
   ],
   string: [
     // Name (select a conversation from history to use)
@@ -117,13 +120,16 @@ const args = parse(Deno.args, {
     "m",
 
     // Language to use for programming or text generation
-    'lang'
+    'lang',
+
+    // Dimensions for embedding
+    "dims",
   ],
 });
 
 // --- Parse Args ---
 const DEFAULT_MODEL = "gpt-4-turbo-preview";
-const DEFAULT_WPM = 800;
+const DEFAULT_WPM = 1200;
 const AVG_CHARS_PER_WORD = 4.8;
 
 const help = args.help;
@@ -153,6 +159,8 @@ const asSys = args["as-sys"] || args["as-system"];
 const bumpSys = args["as-sys"] || args["as-system"];
 const lang = args.lang
 const img = args.img || args.i
+const embed = args.embed
+const dims = args.dims
 // --- END Parse Args ---
 
 let config = await loadConfig();
@@ -201,8 +209,12 @@ Options:
   -f, --fast          Use GPT-3.5-turbo model (faster)
   --repl              Start a continuous conversation
   --code              Output code instead of chat text
+  --lang LANG         Set the language for programming or text generation
   --bump-sys          Bump the most recent system prompt/context to front
+
   -i, --img           Output an image instead of text
+  --embed             Output a vector embedding of the input
+  --dims              Set the dimensions of the embedding
 
   -n, --name NAME     Select a conversation from history to use
   --sys[tem]          Set a system prompt/context
@@ -222,6 +234,21 @@ Examples:
 // --- HANDLE ARGS ---
 if (debug) {
   aiConfig.debug = true;
+}
+if (embed) {
+  const newReq: EmbeddingRequest = {
+    input: messageContent,
+    model: model ?? 'text-embedding-3-small',
+    ...(dims ? {dimensions: Number(dims)} : {})
+  };
+
+  const response = await getEmbeddingResponse(newReq);
+  if (response) {
+    console.log(JSON.stringify(response));
+  } else {
+    console.log("(Failed to generate embedding)");
+  }
+  Deno.exit();
 }
 if (img) {
   const newReq: CreateImageRequest = {

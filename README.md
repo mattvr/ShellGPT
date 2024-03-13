@@ -125,6 +125,7 @@ These commands are for specific chats, either new or existing.
 | --model       | -m         | Manually use a different OpenAI model                |
 | --debug       |            | Print OpenAI API information                         |
 | --lang        |            | Sets written or programming language of output       |
+| --dims        |            | Sets the dimensions of the embedding (--embed only)  |
 
 ### Other Commands
 
@@ -133,6 +134,7 @@ These commands perform non-textual tasks.
 | Argument      | Alias      | Description                                          |
 | ------------- | ---------- | ---------------------------------------------------- |
 | --img         | -i         | Respond with a generated image URL instead of text   |
+| --embed       |            | Respond with a vector embedding of the input string  |
 
 ## Features
 
@@ -144,7 +146,7 @@ Shell-GPT has some useful and unique features:
 - Utility commands for convenient chat history viewing and editing.
 - Smooth, streaming output, resembling human typing rather than delayed or
   choppy responses.
-- Supports image generation and custom language input/output.
+- Supports generating images, embeddings, and configurable languages.
 - Built in Deno for better performance, granular permissions, and easier script
   modification.
 
@@ -199,6 +201,11 @@ Output an image:
 
 ```sh
 gpt --img "a corgi wearing cashmere pants hacking into myspace.com"
+```
+
+Output a vector embedding:
+```sh
+gpt --embed "The quick brown fox jumped over the lazy dog." --dims=1024 --model=text-embedding-3-large
 ```
 
 Interactive coding session:

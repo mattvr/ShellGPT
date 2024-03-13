@@ -1,9 +1,10 @@
 export type Role = "system" | "user" | "assistant";
 type ResponseFormat = 'url' | 'b64_json';
 type ImageSize = '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
-type ModelType = 'dall-e-2' | 'dall-e-3';
+type ImageModelType = 'dall-e-2' | 'dall-e-3';
 type ImageStyle = 'vivid' | 'natural';
 type ImageQuality = 'standard' | 'hd';
+export type EmbedModelType = 'text-embedding-3-small' | 'text-embedding-3-large' | 'text-embedding-ada-002'
 
 export interface Message {
   role: Role;
@@ -67,7 +68,7 @@ export interface ChatCompletionStreamResponse {
   choices: StreamChoice[];
 }
 
-export interface ChatCompetionStreamError {
+export interface ChatCompletionStreamError {
   "error": {
     "message": string | null,
     "type": string | null
@@ -77,7 +78,7 @@ export interface ChatCompetionStreamError {
 }
 export interface CreateImageRequest {
   prompt: string;
-  model?: ModelType;
+  model?: ImageModelType;
   n?: number | null;
   quality?: ImageQuality;
   response_format?: ResponseFormat | null;
@@ -99,7 +100,7 @@ export interface CreateImageEditRequest {
   image: File; // Assuming this is a file object
   prompt: string;
   mask?: File;
-  model?: ModelType;
+  model?: ImageModelType;
   n?: number | null;
   size?: ImageSize | null;
   response_format?: ResponseFormat | null;
@@ -113,7 +114,7 @@ interface CreateImageEditResponse {
 
 export interface CreateImageVariationRequest {
   image: File;
-  model?: ModelType;
+  model?: ImageModelType;
   n?: number | null;
   response_format?: ResponseFormat | null;
   size?: ImageSize | null;
@@ -131,10 +132,27 @@ export interface Image {
   revised_prompt?: string;
 }
 
+export interface EmbeddingRequest {
+  model: EmbedModelType | string;
+  input: string;
+  dimensions?: number;
+}
+
+export interface EmbeddingResponse {
+  data: EmbeddingObject[]
+}
+
+export interface EmbeddingObject {
+  object: "embedding";
+  embedding: number[];
+  index: number
+}
+
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_CHAT_URL = Deno.env.get("OPENAI_CHAT_URL") || "https://api.openai.com/v1/chat/completions";
 const OPENAI_IMG_URL = Deno.env.get("OPENAI_IMG_URL") || "https://api.openai.com/v1/images/generations";
+const OPENAI_EMBEDDING_URL = Deno.env.get("OPENAI_EMBEDDING_URL") || "https://api.openai.com/v1/embeddings";
 
 export const aiConfig = {
   debug: false,
@@ -251,11 +269,13 @@ export const getChatResponse_stream = async (
         let frameEnd = buffer.indexOf("\n\n")
         while (frameEnd === -1 && iters++ < MAX_ITERS) {
           const result = await reader.read();
+          if (result.value) {
+            buffer += decoder.decode(result.value);
+          }
           if (result.done) {
             isDone = true;
             break;
           }
-          buffer += decoder.decode(result.value);
         }
 
         const chunks = []
@@ -283,12 +303,16 @@ export const getChatResponse_stream = async (
 
           let parsed = null;
           try {
-            parsed = JSON.parse(data) as ChatCompletionStreamResponse;
-            if ((parsed as unknown as ChatCompetionStreamError).error) {
-              throw new Error("error found");
-            }
+            parsed = JSON.parse(data);
 
-            newContent += parsed.choices[0]?.delta?.content ?? "";
+            if (parsed.error) {
+              const error = (parsed as unknown as ChatCompletionStreamError).error
+              throw new Error(error.message ?? "Unknown error")
+            }
+            
+            const response = parsed as ChatCompletionStreamResponse;
+
+            newContent += response.choices[0]?.delta?.content ?? "";
 
             if (parsed.choices[0].finish_reason) {
               isDone = true;
@@ -296,7 +320,7 @@ export const getChatResponse_stream = async (
             }
           } catch (e: unknown) {
             // throw with added context
-            const error = (parsed as unknown as ChatCompetionStreamError | null)
+            const error = (parsed as unknown as ChatCompletionStreamError | null)
               ?.error;
             if (error?.code === "model_not_found") {
               console.error(
@@ -395,6 +419,35 @@ export const getImageResponse = async (
       return null;
     }
     return url;
+  } catch (e) {
+    console.error("Failed to reply", e);
+    return null;
+  }
+}
+
+export const getEmbeddingResponse = async (
+  req: EmbeddingRequest
+): Promise<number[] | null> => {
+  if (aiConfig.debug) {
+    console.log("Request to OpenAI", req);
+  }
+  await checkAPIKey();
+
+  const response = await fetch(OPENAI_EMBEDDING_URL, {
+    "method": "POST",
+    "headers": {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    "body": JSON.stringify(req),
+  })
+
+  try {
+    const data = await response.json() as EmbeddingResponse;
+    if (aiConfig.debug) {
+      console.log("Response from OpenAI", data);
+    }
+    return data.data[0].embedding
   } catch (e) {
     console.error("Failed to reply", e);
     return null;
