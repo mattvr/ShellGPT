@@ -68,6 +68,17 @@ export interface ChatCompletionStreamResponse {
   choices: StreamChoice[];
 }
 
+export interface AnthropicChatCompletionStreamResponse {
+  type: "ping" | "message_start" | "content_block_start" | "content_block_delta" | "content_block_stop" | "message_delta" | "message_stop";
+  index: number,
+  delta: {
+    stop_reason?: string,
+  } | {
+    type: "text"
+    text: string;
+  }
+}
+
 export interface ChatCompletionStreamError {
   "error": {
     "message": string | null,
@@ -153,6 +164,7 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_CHAT_URL = Deno.env.get("OPENAI_CHAT_URL") || "https://api.openai.com/v1/chat/completions";
 const OPENAI_IMG_URL = Deno.env.get("OPENAI_IMG_URL") || "https://api.openai.com/v1/images/generations";
 const OPENAI_EMBEDDING_URL = Deno.env.get("OPENAI_EMBEDDING_URL") || "https://api.openai.com/v1/embeddings";
+const OPENAI_ORGANIZATION = Deno.env.get("OPENAI_ORGANIZATION") || null;
 
 export const aiConfig = {
   debug: false,
@@ -244,14 +256,38 @@ export const getChatResponse_stream = async (
 
   req.stream = true;
 
+  const isAnthropic = OPENAI_CHAT_URL.toLowerCase().includes('anthropic.com')
+  if (isAnthropic) {
+    req.max_tokens = 2048; // required
+
+    // remove 'system' messages and concat them to system top level key
+    const sysMessages = req.messages.filter(m => m.role === 'system')
+    if (sysMessages.length > 0) {
+      (req as any).system = sysMessages.map(m => m.content).join('\n')
+      req.messages = req.messages.filter(m => m.role !== 'system')
+    }
+  }
+
   const response = await fetch(OPENAI_CHAT_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      ...(isAnthropic ? {
+        "anthropic-beta": "messages-2023-12-15",
+        "anthropic-version": "2023-06-01",
+        "x-api-key": OPENAI_API_KEY!,
+      } : {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        ...(OPENAI_ORGANIZATION ? { "OpenAI-Organization": OPENAI_ORGANIZATION } : {}),
+      }),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(req),
   });
+
+  if (response.status !== 200) {
+    console.error("Failed to start stream", response.status, response.statusText);
+    Deno.exit(1);
+  }
 
   const decoder = new TextDecoder("utf-8");
   const reader = response.body!.getReader();
@@ -260,7 +296,7 @@ export const getChatResponse_stream = async (
 
   let buffer = ""
   const MAX_ITERS = 20
-  
+
   const iterator = {
     async next(): Promise<IteratorResult<StreamResponse>> {
       try {
@@ -290,8 +326,14 @@ export const getChatResponse_stream = async (
 
         // accumulate the chunks
         for (const chunk of chunks) {
-          // remove the "data: " from the beginning of the message
-          const data = chunk.substring(6);
+          // remove the "[...]: " from the beginning of the message
+          let chunkWithData = chunk;
+          if (chunk.startsWith('event:')) {
+            // Remove the first line
+            chunkWithData = chunk.substring(chunk.indexOf("\n") + 1)
+          }
+
+          const data = chunkWithData.substring(6);
           if (!data) {
             continue;
           }
@@ -309,14 +351,25 @@ export const getChatResponse_stream = async (
               const error = (parsed as unknown as ChatCompletionStreamError).error
               throw new Error(error.message ?? "Unknown error")
             }
-            
-            const response = parsed as ChatCompletionStreamResponse;
 
-            newContent += response.choices[0]?.delta?.content ?? "";
 
-            if (parsed.choices[0].finish_reason) {
-              isDone = true;
-              break;
+            if (isAnthropic) {
+              const response = parsed as AnthropicChatCompletionStreamResponse;
+              newContent += (response?.delta as any)?.text ?? ""
+
+              if (response.type === "message_stop") {
+                isDone = true;
+                break;
+              }
+            }
+            else {
+              const response = parsed as ChatCompletionStreamResponse;
+              newContent += response.choices[0]?.delta?.content ?? ""
+
+              if (parsed.choices[0].finish_reason) {
+                isDone = true;
+                break;
+              }
             }
           } catch (e: unknown) {
             // throw with added context
@@ -378,10 +431,15 @@ export const getChatResponse_stream2 = async (
         for await (const value of iterator) {
           controller.enqueue(value.value ?? "");
         }
+
+        // Don't drop the last message
+        const last = await iterator.next();
+        if (last.done && last.value) {
+          controller.enqueue(last.value.value ?? "");
+        }
       }
       catch (e) {
         console.error("Error in stream", e);
-        controller.error(e);
       }
       controller.close();
     }

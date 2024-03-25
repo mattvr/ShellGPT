@@ -475,7 +475,9 @@ if (system || (config?.systemPrompt && !cont)) {
 let empty = false;
 if (!message.content && !retry && !pop && !history) {
   empty = true;
-  console.log("(No message passed)\n");
+  if (!repl) {
+    console.log("(No message passed)\n");
+  }
 }
 
 if (temp) {
@@ -679,10 +681,12 @@ const flush = async () => {
   const text = new TextEncoder().encode("\n");
   await Deno.stdout.write(text);
 
-  req.messages.push({
-    content: responseStr,
-    role: "assistant",
-  });
+  if (responseStr) {
+    req.messages.push({
+      content: responseStr,
+      role: "assistant",
+    });
+  }
 
   await writeChat(req, cont ? false : (name || true));
 
