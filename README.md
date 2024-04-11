@@ -182,7 +182,22 @@ gpt --history
 
 gpt --name "cat-tweets" "Generate more, please"
 
-gpt --dump # Dumps entire chat history
+gpt --dump # Dumps latest entry in the history
+```
+
+Viewing a specific history entry:
+
+```sh
+gpt --dump --name "2024-04-11_09-52-56"
+
+---
+
+tell me a joke
+
+---
+
+Why couldn't the bicycle stand up by itself? Because it was two-tired!
+
 ```
 
 Setting a system prompt and custom temperature:
