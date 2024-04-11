@@ -214,7 +214,7 @@ export const getChat = async (
  * Get the history of chats
  * @example [{ name: '2021-01-01_12-00-00', time: Date }, { name: '2021-01-01_12-00-00', time: Date }]
  */
-export const getHistory = async (): Promise<{
+export const getHistory = async (descending: boolean = true): Promise<{
   name: string;
   snippet?: string;
   time: Date;
@@ -248,7 +248,8 @@ export const getHistory = async (): Promise<{
     });
   }
 
-  fileInfos.sort((a, b) => b.time.getTime() - a.time.getTime());
+  const sortOrder = descending ? -1 : 1;
+  fileInfos.sort((a, b) => sortOrder * (a.time.getTime() - b.time.getTime()));
 
   // add historySnippets
   let generatedSnippets = false;
