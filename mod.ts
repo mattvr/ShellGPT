@@ -60,6 +60,7 @@ const args = parse(Deno.args, {
     // History (list chat history)
     "history",
     "h",
+    "desc",
 
     // Dump (dump the entire chat history)
     "dump",
@@ -149,6 +150,7 @@ const dump = args.dump || args.d;
 const cont = slice || pop || retry || rewrite || print || dump ||
   (Boolean(args.c || args.cont || args.continue));
 const history = args.h || args.history;
+const descending = args.desc
 const system = args.sys || args.system;
 const maxTokens = args.max || args.max_tokens;
 const readStdin = args._.at(0) === "-" || args._.at(-1) === "-";
@@ -205,6 +207,7 @@ Options:
   --pop               Remove the last message in the conversation
   -p, --print         Print the last message in the conversation
   -h, --history       List chat history
+  --desc              List chat history in descending order. Defaults to ascending order.
   -d, --dump          Dump the entire chat history
   -f, --fast          Use GPT-3.5-turbo model (faster)
   --repl              Start a continuous conversation
@@ -515,7 +518,7 @@ if (exec) {
 }
 
 if (history) {
-  const files = await getHistory();
+  const files = await getHistory(descending);
   for (const file of files) {
     const hasSnippet = file.snippet && file.snippet.length > 0;
     if (hasSnippet) {

@@ -110,6 +110,7 @@ These commands are for specific chats, either new or existing.
 | --exec        | -x         | Run the output as a shell command                    |
 | --code        |            | Returns code as the response                         |
 | --name        | -n         | Name of chat from history to operate the command on  |
+| --desc        |            | Sort the history entries in descending order         |
 | --repl        |            | Enters a REPL mode with continuous chat              |
 | --retry       | -r         | Regenerate the last assistant message                |
 | --rewrite     | --rw, -w   | Rewrite the last user message & regenerate response  |
@@ -178,6 +179,12 @@ Viewing and resuming past conversation history:
 gpt --history
 # shellgpt-demo-chat
 # cat-tweets
+# ...
+
+gpt --history --desc
+# ...
+# cat-tweets
+# shellgpt-demo-chat
 # ...
 
 gpt --name "cat-tweets" "Generate more, please"
