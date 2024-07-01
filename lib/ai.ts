@@ -159,15 +159,16 @@ export interface EmbeddingObject {
   index: number
 }
 
-
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_CHAT_URL = Deno.env.get("OPENAI_CHAT_URL") || "https://api.openai.com/v1/chat/completions";
 const OPENAI_IMG_URL = Deno.env.get("OPENAI_IMG_URL") || "https://api.openai.com/v1/images/generations";
 const OPENAI_EMBEDDING_URL = Deno.env.get("OPENAI_EMBEDDING_URL") || "https://api.openai.com/v1/embeddings";
 const OPENAI_ORGANIZATION = Deno.env.get("OPENAI_ORGANIZATION") || null;
 
-export const aiConfig = {
-  debug: false,
+export const aiConfig: {
+  debug: 'verbose' | 'none';
+} = {
+  debug: 'none',
 };
 
 export const checkAPIKey = (key?: string) => {
@@ -203,8 +204,8 @@ export const getChatResponse = async (
     headers?: Record<string, string>,
   }
 ): Promise<string | null> => {
-  if (aiConfig.debug) {
-    console.log("Request to OpenAI", req);
+  if (aiConfig.debug === 'verbose') {
+    console.warn("[request]", req);
   }
 
   checkAPIKey(params?.apiKey);
@@ -225,8 +226,8 @@ export const getChatResponse = async (
   });
   try {
     const data = await response.json() as ChatCompletionResponse;
-    if (aiConfig.debug) {
-      console.log("Response from OpenAI", data);
+    if (aiConfig.debug === 'verbose') {
+      console.warn("[response]", data);
     }
     const content = data?.choices?.[0]?.message?.content;
     if (!content) {
@@ -249,8 +250,8 @@ export type StreamResponse = {
 export const getChatResponse_stream = async (
   req: ChatCompletionRequest
 ): Promise<AsyncIterableIterator<StreamResponse>> => {
-  if (aiConfig.debug) {
-    console.log("Request to OpenAI", req);
+  if (aiConfig.debug === 'verbose') {
+    console.warn("[request]", req);
   }
   await checkAPIKey();
 
@@ -310,6 +311,9 @@ export const getChatResponse_stream = async (
           }
           if (result.done) {
             isDone = true;
+            if (aiConfig.debug === 'verbose') {
+              console.warn('[done] iters:', iters);
+            }
             break;
           }
         }
@@ -326,6 +330,10 @@ export const getChatResponse_stream = async (
 
         // accumulate the chunks
         for (const chunk of chunks) {
+          if (aiConfig.debug === 'verbose') {
+            console.warn('[chunk]', chunk);
+          }
+
           // remove the "[...]: " from the beginning of the message
           let chunkWithData = chunk;
           if (chunk.startsWith('event:')) {
@@ -452,8 +460,8 @@ export const getChatResponse_stream2 = async (
 export const getImageResponse = async (
   req: CreateImageRequest
 ): Promise<string | null /* url */> => {
-  if (aiConfig.debug) {
-    console.log("Request to OpenAI", req);
+  if (aiConfig.debug === 'verbose') {
+    console.warn("[request]", req);
   }
   await checkAPIKey();
 
@@ -468,8 +476,8 @@ export const getImageResponse = async (
 
   try {
     const data = await response.json() as CreateImageResponse;
-    if (aiConfig.debug) {
-      console.log("Response from OpenAI", data);
+    if (aiConfig.debug === 'verbose') {
+      console.warn("[response]", data);
     }
     const url = data?.data?.[0]?.url;
     if (!url) {
@@ -486,8 +494,8 @@ export const getImageResponse = async (
 export const getEmbeddingResponse = async (
   req: EmbeddingRequest
 ): Promise<number[] | null> => {
-  if (aiConfig.debug) {
-    console.log("Request to OpenAI", req);
+  if (aiConfig.debug === 'verbose') {
+    console.warn("[request]", req);
   }
   await checkAPIKey();
 
@@ -502,8 +510,8 @@ export const getEmbeddingResponse = async (
 
   try {
     const data = await response.json() as EmbeddingResponse;
-    if (aiConfig.debug) {
-      console.log("Response from OpenAI", data);
+    if (aiConfig.debug === 'verbose') {
+      console.warn("[response]", data);
     }
     return data.data[0].embedding
   } catch (e) {

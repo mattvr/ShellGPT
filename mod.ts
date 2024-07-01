@@ -236,7 +236,7 @@ Examples:
 
 // --- HANDLE ARGS ---
 if (debug) {
-  aiConfig.debug = true;
+  aiConfig.debug = 'verbose';
 }
 if (embed) {
   const newReq: EmbeddingRequest = {
