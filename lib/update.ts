@@ -94,10 +94,10 @@ export const install = async (config: Config, isUpdate = false): Promise<{
 
   let installCommand: string;
   if (isUpdate) {
-    installCommand = `deno install -frA -n ${alias} ${REPO_URL}@${latestVersion}/mod.ts`
+    installCommand = `deno install -frAg -n ${alias} ${REPO_URL}@${latestVersion}/mod.ts`
   } else {
     const modPath = Deno.mainModule.replace('install.ts', 'mod.ts')
-    installCommand = `deno install -frA -n ${alias} ${modPath}`
+    installCommand = `deno install -frAg -n ${alias} ${modPath}`
   }
 
   console.log(`\n$ %c${installCommand}`, 'color: blue')
@@ -143,18 +143,22 @@ export const install = async (config: Config, isUpdate = false): Promise<{
     }
   }
 
-  const command = Deno.run({
-    cmd: [...getExecPrefix(), installCommand],
+  const [cmd, ...args] = getExecPrefix()
+  const command = new Deno.Command(cmd, {
+    args: [...args, installCommand],
     stdout: 'inherit',
     stderr: 'inherit'
   })
 
-  const status = await command.status()
+  const process = await command.spawn()
+  
+  await process.output()
+
+  const status = await process.status
   if (!status.success) {
     console.error(`Shell command failed: ${installCommand}`)
     console.error(`Exit code: ${status.code}`)
-    command.close()
-
+    process.kill()
     return {
       result: 'error',
       autoUpdate: config.autoUpdate,
@@ -163,7 +167,6 @@ export const install = async (config: Config, isUpdate = false): Promise<{
     }
   }
 
-  command.close()
 
   return {
     result: 'updated',
