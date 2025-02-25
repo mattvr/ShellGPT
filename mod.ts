@@ -338,8 +338,8 @@ if (updateConfig || configWasEmpty) {
     "font-weight: bold;",
   );
   console.log();
-  const model = window.prompt(
-    `You can enter "gpt-4" or "gpt-3.5-turbo". (Leave empty for ${currentModel}):`,
+  const model = prompt(
+    `You can enter "gpt-4o", "gpt-4o-mini", etc. (Leave empty for ${currentModel}):`,
   );
 
   if (model) {
@@ -353,7 +353,7 @@ if (updateConfig || configWasEmpty) {
   if (config?.systemPrompt) {
     console.log(`Current system prompt: ${config.systemPrompt}`);
     console.log();
-    const newPrompt = window.prompt(
+    const newPrompt = prompt(
       `Enter new prompt (empty to keep, "clear" to remove)`,
     );
     if (newPrompt === "clear") {
@@ -365,7 +365,7 @@ if (updateConfig || configWasEmpty) {
     }
   } else {
     console.log();
-    const newPrompt = window.prompt(
+    const newPrompt = prompt(
       `Press enter to skip, or type a new prompt:`,
     );
     if (newPrompt) {
@@ -390,7 +390,7 @@ if (updateConfig || configWasEmpty) {
     }
     console.log();
 
-    const newPrompt = window.prompt(
+    const newPrompt = prompt(
       config?.openAiApiKey
         ? `Enter new API key (empty to keep, "clear" to remove)`
         : `Enter API key (empty to skip)`,
